@@ -12,13 +12,14 @@ const lineColor = Color(0xFFE8DCC8);
 const okGreen = Color(0xFF2F7D4F);
 const badRed = Color(0xFFB3261E);
 
-/// Headings use Cormorant Garamond when it is installed in the app's fonts, and
-/// the phone's serif font otherwise (add the font files to get the exact look).
+/// Headings use the bundled Cormorant Garamond (assets/fonts); the phone's serif
+/// font is only a fallback.
 TextStyle serif(double size, {Color color = textBrown}) => TextStyle(
       fontFamily: 'Cormorant Garamond',
       fontFamilyFallback: const ['serif'],
       fontSize: size,
       fontWeight: FontWeight.w700,
+      fontVariations: const [FontVariation('wght', 700)],
       height: 1.2,
       color: color,
     );
@@ -37,6 +38,7 @@ ThemeData brandTheme() {
   final shape10 = RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.white,
     textTheme: ThemeData.light().textTheme.apply(bodyColor: textBrown, displayColor: textBrown),
