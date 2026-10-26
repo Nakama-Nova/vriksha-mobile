@@ -1,11 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
 import 'session.dart';
 import 'theme.dart';
 
-void main() => runApp(const CaptureApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // The fonts are SIL Open Font License: list them on the Licences page.
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      ['Cormorant Garamond'],
+      await rootBundle.loadString('assets/fonts/OFL-CormorantGaramond.txt'),
+    );
+    yield LicenseEntryWithLineBreaks(
+      ['Inter'],
+      await rootBundle.loadString('assets/fonts/OFL-Inter.txt'),
+    );
+  });
+  runApp(const CaptureApp());
+}
 
 class CaptureApp extends StatelessWidget {
   const CaptureApp({super.key});
