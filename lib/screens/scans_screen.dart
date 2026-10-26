@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../session.dart';
+import '../theme.dart';
+import '../widgets.dart';
 import 'new_scan_screen.dart';
 
 String sizeText(int bytes) => bytes >= 1024 * 1024 * 1024
@@ -86,56 +88,51 @@ class _ScansScreenState extends State<ScansScreen> {
   @override
   Widget build(BuildContext context) {
     final scans = _scans;
+    final waiting = scans?.where((s) => s.status == 'uploaded').length ?? 0;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.session.isStaffLead ? 'All scans' : 'My scans'),
-        actions: [
-          IconButton(
-            tooltip: 'Licences',
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => showLicensePage(
-                context: context,
-                applicationName: 'Vriksha Capture',
-                applicationLegalese: 'MIT License. Copyright (c) 2026 Nakama Nova'),
-          ),
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: widget.onSignOut,
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _newScan,
-        icon: const Icon(Icons.add_a_photo),
-        label: const Text('New scan'),
+      backgroundColor: Colors.white,
+      appBar: BrandAppBar(
+        title: widget.session.isStaffLead ? 'All scans' : 'My scans',
+        subtitle: waiting > 0 ? '$waiting waiting for the workshop PC' : null,
       ),
       body: RefreshIndicator(
         onRefresh: _load,
-        child: scans == null
-            ? ListView(children: [
-                if (_error != null)
-                  Padding(padding: const EdgeInsets.all(24), child: Text(_error!))
-                else
-                  const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator())),
-              ])
-            : scans.isEmpty
-                ? ListView(children: const [
-                    Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Text('No scans yet. Tap "New scan" and walk around the piece taking photos.'))
-                  ])
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-                    itemCount: scans.length,
-                    itemBuilder: (_, i) => _ScanCard(scan: scans[i], onCancel: _cancel),
-                  ),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            FilledButton.icon(
+              onPressed: _newScan,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('New scan'),
+            ),
+            const SizedBox(height: 14),
+            if (scans == null && _error != null)
+              Padding(padding: const EdgeInsets.all(12), child: Text(_error!))
+            else if (scans == null)
+              const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+            else if (scans.isEmpty)
+              const WarmCard(
+                child: Text('No scans yet. Tap "New scan" and walk around the piece taking photos.'),
+              )
+            else
+              for (final s in scans) ...[
+                _ScanCard(scan: s, onCancel: _cancel),
+                const SizedBox(height: 12),
+              ],
+          ],
+        ),
       ),
     );
   }
 }
+
+Color chipColor(String status) => switch (status) {
+      'uploaded' => brandGold,
+      'processing' => brandBrown,
+      'done' => okGreen,
+      'failed' => badRed,
+      _ => textMuted,
+    };
 
 class _ScanCard extends StatelessWidget {
   const _ScanCard({required this.scan, required this.onCancel});
@@ -145,32 +142,43 @@ class _ScanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final when = scan.createdAt;
-    final title = scan.itemName ??
-        'Scan ${when.day}/${when.month} ${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
-    final scheme = Theme.of(context).colorScheme;
+    final date = '${when.day}/${when.month} ${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
+    final title = scan.itemName ?? 'Scan $date';
+    final kind = scan.sourceKind == 'video' ? 'Video' : 'Photos';
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(
-            '${scan.sourceKind == 'video' ? 'Video' : '${scan.files} photos'} · ${sizeText(scan.sourceBytes)}',
-            style: const TextStyle(color: Color(0xFF7A5A3C)),
-          ),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600))),
+            const SizedBox(width: 8),
+            StatusChip(scan.statusLabel, chipColor(scan.status), fill: scan.status == 'processing'),
+          ]),
           const SizedBox(height: 8),
-          Text(scan.statusLabel,
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: scan.status == 'failed' ? scheme.error : scheme.primary)),
+          Text(scan.sourceKind == 'video'
+              ? 'Video  ·  ${sizeText(scan.sourceBytes)}'
+              : '${scan.files} photos  ·  ${sizeText(scan.sourceBytes)}'),
+          const SizedBox(height: 8),
+          Text.rich(TextSpan(children: [
+            TextSpan(text: kind, style: const TextStyle(color: brandGold, fontWeight: FontWeight.w500)),
+            TextSpan(text: '   $date', style: const TextStyle(color: textMuted)),
+          ]), style: const TextStyle(fontSize: 11)),
           if (scan.status == 'processing') ...[
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: scan.progress / 100),
-            if (scan.note != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(scan.note!)),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: scan.progress / 100,
+              color: brandBrown,
+              backgroundColor: lineColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            if (scan.note != null)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text(scan.note!, style: const TextStyle(fontSize: 12, color: textMuted))),
           ],
           if (scan.status == 'failed' && scan.error != null)
-            Padding(padding: const EdgeInsets.only(top: 6), child: Text(scan.error!)),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(scan.error!, style: const TextStyle(fontSize: 13, color: badRed)),
+            ),
           if (scan.canCancel)
             Align(
               alignment: Alignment.centerRight,

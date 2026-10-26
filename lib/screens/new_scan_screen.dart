@@ -5,7 +5,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../api.dart';
 import '../session.dart';
+import '../theme.dart';
 import '../uploader.dart';
+import '../widgets.dart';
 
 const minPhotos = 8;
 
@@ -115,62 +117,83 @@ class _NewScanScreenState extends State<NewScanScreen> {
     final uploading = _progress != null;
     final isPhotos = _kind == 'photos';
     return Scaffold(
-      appBar: AppBar(title: const Text('New scan')),
-      body: SafeArea(
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'photos', label: Text('Photos'), icon: Icon(Icons.photo_camera)),
-              ButtonSegment(value: 'video', label: Text('Video'), icon: Icon(Icons.videocam)),
-            ],
-            selected: {_kind},
-            onSelectionChanged: uploading ? null : (s) => _switchKind(s.first),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(isPhotos
-                  ? 'Walk slowly around the piece and take $minPhotos or more photos, each overlapping the last. '
-                      'Use even light, keep the whole piece in frame, and avoid shiny glare.'
-                  : 'Record one slow walk-around, up to 90 seconds. Keep the whole piece in frame '
-                      'and move steadily. Even light works best.'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            if (isPhotos) ...[
-              FilledButton.icon(
-                  onPressed: uploading ? null : _takePhoto,
-                  icon: const Icon(Icons.photo_camera),
-                  label: const Text('Take photo')),
-              OutlinedButton.icon(
-                  onPressed: uploading ? null : _pickPhotos,
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Choose photos')),
-            ] else ...[
-              FilledButton.icon(
-                  onPressed: uploading ? null : () => _video(ImageSource.camera),
-                  icon: const Icon(Icons.videocam),
-                  label: const Text('Record video')),
-              OutlinedButton.icon(
-                  onPressed: uploading ? null : () => _video(ImageSource.gallery),
-                  icon: const Icon(Icons.video_library),
-                  label: const Text('Choose video')),
-            ],
-          ]),
-          const SizedBox(height: 8),
-          Text(isPhotos
+      backgroundColor: Colors.white,
+      appBar: const BrandAppBar(title: 'New scan', back: true),
+      bottomNavigationBar: ActionBar(
+        child: uploading
+            ? Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                LinearProgressIndicator(
+                  value: _progress,
+                  color: brandBrown,
+                  backgroundColor: lineColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 8),
+                Text('Uploading ${(100 * (_progress ?? 0)).round()}%. Keep the app open.'),
+              ])
+            : FilledButton.icon(
+                onPressed: _upload,
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: Text(_unfinishedScan != null ? 'Try again' : 'Upload'),
+              ),
+      ),
+      body: ListView(padding: const EdgeInsets.all(20), children: [
+        SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(value: 'photos', label: Text('Photos'), icon: Icon(Icons.photo_camera_outlined)),
+            ButtonSegment(value: 'video', label: Text('Video'), icon: Icon(Icons.videocam_outlined)),
+          ],
+          selected: {_kind},
+          onSelectionChanged: uploading ? null : (s) => _switchKind(s.first),
+        ),
+        const SizedBox(height: 14),
+        WarmCard(
+          child: Text(isPhotos
+              ? 'Walk slowly around the piece and take $minPhotos or more photos, each overlapping the last. '
+                  'Use even light, keep the whole piece in frame, and avoid shiny glare.'
+              : 'Record one slow walk-around, up to 90 seconds. Keep the whole piece in frame '
+                  'and move steadily. Even light works best.'),
+        ),
+        const SizedBox(height: 14),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          if (isPhotos) ...[
+            FilledButton.icon(
+                onPressed: uploading ? null : _takePhoto,
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Take photo')),
+            OutlinedButton.icon(
+                onPressed: uploading ? null : _pickPhotos,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Choose photos')),
+          ] else ...[
+            FilledButton.icon(
+                onPressed: uploading ? null : () => _video(ImageSource.camera),
+                icon: const Icon(Icons.videocam_outlined),
+                label: const Text('Record video')),
+            OutlinedButton.icon(
+                onPressed: uploading ? null : () => _video(ImageSource.gallery),
+                icon: const Icon(Icons.video_library_outlined),
+                label: const Text('Choose video')),
+          ],
+        ]),
+        const SizedBox(height: 10),
+        Text(
+          isPhotos
               ? '${_paths.length} photo${_paths.length == 1 ? '' : 's'} chosen'
-              : (_paths.isEmpty ? 'No video chosen' : 'Video chosen')),
-          if (isPhotos && _paths.isNotEmpty)
-            SizedBox(
-              height: 76,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _paths.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
-                itemBuilder: (_, i) => Stack(children: [
+              : (_paths.isEmpty ? 'No video chosen' : 'Video chosen'),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        if (isPhotos && _paths.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _paths.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (_, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Stack(children: [
                   Image.file(File(_paths[i]), width: 76, height: 76, fit: BoxFit.cover, cacheWidth: 152),
                   Positioned(
                     right: 0,
@@ -183,58 +206,48 @@ class _NewScanScreenState extends State<NewScanScreen> {
                 ]),
               ),
             ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _width,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            enabled: !uploading,
-            decoration: const InputDecoration(
-              labelText: 'Real width of the piece (mm), optional',
-              helperText: 'Measure it with a tape. It sets the true size of the 3D model.',
-            ),
           ),
+        ],
+        const SizedBox(height: 18),
+        TextField(
+          controller: _width,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          enabled: !uploading,
+          decoration: const InputDecoration(
+            labelText: 'Real width of the piece (mm), optional',
+            helperText: 'Measure it with a tape. It sets the true size of the 3D model.',
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          initialValue: _quality,
+          decoration: const InputDecoration(labelText: 'Quality'),
+          items: const [
+            DropdownMenuItem(value: 'fast', child: Text('Fast (rough shape)')),
+            DropdownMenuItem(value: 'normal', child: Text('Normal')),
+            DropdownMenuItem(value: 'high', child: Text('High (slower)')),
+          ],
+          onChanged: uploading ? null : (v) => setState(() => _quality = v ?? 'normal'),
+        ),
+        if (widget.session.isStaffLead && _items.isNotEmpty) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _quality,
-            decoration: const InputDecoration(labelText: 'Quality'),
-            items: const [
-              DropdownMenuItem(value: 'fast', child: Text('Fast (rough shape)')),
-              DropdownMenuItem(value: 'normal', child: Text('Normal')),
-              DropdownMenuItem(value: 'high', child: Text('High (slower)')),
+          DropdownButtonFormField<String?>(
+            initialValue: _itemId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Product (optional)'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('Choose later')),
+              for (final i in _items)
+                DropdownMenuItem<String?>(value: i.id, child: Text('${i.name}  (${i.sku})')),
             ],
-            onChanged: uploading ? null : (v) => setState(() => _quality = v ?? 'normal'),
+            onChanged: uploading ? null : (v) => setState(() => _itemId = v),
           ),
-          if (widget.session.isStaffLead && _items.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String?>(
-              initialValue: _itemId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Product (optional)'),
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Choose later')),
-                for (final i in _items)
-                  DropdownMenuItem<String?>(value: i.id, child: Text('${i.name}  (${i.sku})')),
-              ],
-              onChanged: uploading ? null : (v) => setState(() => _itemId = v),
-            ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ],
-          const SizedBox(height: 16),
-          if (uploading) ...[
-            LinearProgressIndicator(value: _progress),
-            const SizedBox(height: 6),
-            Text('Uploading ${(100 * (_progress ?? 0)).round()}%. Keep the app open.'),
-          ] else
-            FilledButton.icon(
-              onPressed: _upload,
-              icon: const Icon(Icons.cloud_upload),
-              label: Text(_unfinishedScan != null ? 'Try again' : 'Upload'),
-            ),
-        ]),
-      ),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(_error!, style: const TextStyle(color: badRed)),
+        ],
+      ]),
     );
   }
 }
