@@ -10,6 +10,10 @@ Files never pass through the shop server: it hands the phone a short-lived signe
 
 The previous Kotlin Android app is kept on the `legacy/kotlin` branch of this repository (retired; this Flutter app replaces it).
 
+## Look
+
+Follows the generated Vriksha Studio design (`docs/design/mobile-screens.html` in the backend repo): brown app bars, warm surface, outlined cards and status chips, a bottom bar (Scans, More). Headings use Cormorant Garamond when the font is bundled and the phone's serif font otherwise; to get the exact look, add the font files under `assets/fonts` and declare them in `pubspec.yaml`.
+
 ## Develop
 
 ```bash

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../session.dart';
+import '../theme.dart';
 
+/// Design screen 1: warm background, gold logomark, serif name, brown button.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.onSignedIn});
   final void Function(Session) onSignedIn;
@@ -17,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _pass = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _show = false;
 
   @override
   void initState() {
@@ -53,49 +56,70 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Vriksha Capture')),
+        backgroundColor: surfaceWarm,
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              const SizedBox(height: 8),
-              const Text('Sign in', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _server,
-                keyboardType: TextInputType.url,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Server address',
-                  hintText: 'https://shop.example.com',
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(color: brandGold, shape: BoxShape.circle),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _user,
-                autocorrect: false,
-                decoration: const InputDecoration(labelText: 'Username'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _pass,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
-                onSubmitted: (_) => _signIn(),
-              ),
-              if (_error != null) ...[
+                const SizedBox(height: 14),
+                Text('Vriksha Studio', style: serif(34, color: brandBrown)),
+                const Text('Staff sign in', style: TextStyle(color: textMuted)),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _server,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Server address',
+                    hintText: 'https://shop.example.com',
+                  ),
+                ),
                 const SizedBox(height: 12),
-                Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-              ],
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _busy ? null : _signIn,
-                child: _busy
-                    ? const SizedBox(
-                        height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Sign in'),
-              ),
-            ],
+                TextField(
+                  controller: _user,
+                  autocorrect: false,
+                  decoration: const InputDecoration(labelText: 'Username'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _pass,
+                  obscureText: !_show,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    suffixIcon: TextButton(
+                      onPressed: () => setState(() => _show = !_show),
+                      child: Text(_show ? 'Hide' : 'Show'),
+                    ),
+                  ),
+                  onSubmitted: (_) => _signIn(),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(_error!, style: const TextStyle(color: badRed)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _busy ? null : _signIn,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Sign in'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('Vriksha Capture · v1', style: TextStyle(fontSize: 12, color: textMuted)),
+              ]),
+            ),
           ),
         ),
       );

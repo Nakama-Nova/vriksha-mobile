@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/login_screen.dart';
-import 'screens/scans_screen.dart';
+import 'screens/home_shell.dart';
 import 'session.dart';
 import 'theme.dart';
 
@@ -45,7 +45,7 @@ class _GateState extends State<_Gate> {
           final s = snap.data;
           return s == null
               ? LoginScreen(onSignedIn: _signedIn)
-              : ScansScreen(session: s, onSignOut: _signOut);
+              : HomeShell(session: s, onSignOut: _signOut);
         },
       );
 }
