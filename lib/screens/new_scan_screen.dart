@@ -1,0 +1,240 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../api.dart';
+import '../session.dart';
+import '../uploader.dart';
+
+const minPhotos = 8;
+
+class NewScanScreen extends StatefulWidget {
+  const NewScanScreen({super.key, required this.session});
+  final Session session;
+
+  @override
+  State<NewScanScreen> createState() => _NewScanScreenState();
+}
+
+class _NewScanScreenState extends State<NewScanScreen> {
+  final _picker = ImagePicker();
+  final _width = TextEditingController();
+  String _kind = 'photos';
+  String _quality = 'normal';
+  final List<String> _paths = [];
+  List<CatalogItem> _items = const [];
+  String? _itemId;
+  String? _error;
+  double? _progress;
+  String? _unfinishedScan; // set when an upload failed, so "Try again" resumes it
+  List<CaptureFile> _unfinishedFiles = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.session.isStaffLead) {
+      widget.session.api.items().then((v) {
+        if (mounted) setState(() => _items = v);
+      }).catchError((_) {});
+    }
+  }
+
+  void _switchKind(String k) => setState(() {
+        _kind = k;
+        _paths.clear();
+        _error = null;
+      });
+
+  Future<void> _takePhoto() async {
+    final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 92);
+    if (x != null) setState(() => _paths.add(x.path));
+  }
+
+  Future<void> _pickPhotos() async {
+    final xs = await _picker.pickMultiImage(imageQuality: 92);
+    setState(() => _paths.addAll(xs.map((x) => x.path)));
+  }
+
+  Future<void> _video(ImageSource src) async {
+    final x = await _picker.pickVideo(source: src, maxDuration: const Duration(seconds: 90));
+    if (x != null) setState(() => _paths..clear()..add(x.path));
+  }
+
+  Future<void> _upload() async {
+    if (_kind == 'photos' && _paths.length < minPhotos) {
+      setState(() => _error = 'Take at least $minPhotos photos, walking around the piece.');
+      return;
+    }
+    if (_paths.isEmpty) {
+      setState(() => _error = 'Record or choose a video first.');
+      return;
+    }
+    final width = double.tryParse(_width.text.trim());
+    if (_width.text.trim().isNotEmpty && (width == null || width <= 0 || width > 5000)) {
+      setState(() => _error = 'The real width must be between 1 and 5000 mm.');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _progress = 0;
+    });
+    final files = [for (final p in _paths) CaptureFile(p, await File(p).length())];
+    final uploader = ScanUploader(widget.session.api);
+    void onProgress(double f) => mounted ? setState(() => _progress = f) : null;
+    try {
+      if (_unfinishedScan != null) {
+        await uploader.resume(_unfinishedScan!, _unfinishedFiles, onProgress: onProgress);
+      } else {
+        await uploader.upload(
+          kind: _kind,
+          files: files,
+          itemId: _itemId,
+          realWidthMm: width,
+          quality: _quality,
+          onProgress: onProgress,
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploaded. The workshop PC will pick it up.')));
+      Navigator.of(context).pop(true);
+    } on UploadFailed catch (e) {
+      _unfinishedScan = e.scanId;
+      _unfinishedFiles = files;
+      if (mounted) setState(() => _error = '${e.reason} Tap Upload to try again.');
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _progress = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uploading = _progress != null;
+    final isPhotos = _kind == 'photos';
+    return Scaffold(
+      appBar: AppBar(title: const Text('New scan')),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(16), children: [
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'photos', label: Text('Photos'), icon: Icon(Icons.photo_camera)),
+              ButtonSegment(value: 'video', label: Text('Video'), icon: Icon(Icons.videocam)),
+            ],
+            selected: {_kind},
+            onSelectionChanged: uploading ? null : (s) => _switchKind(s.first),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(isPhotos
+                  ? 'Walk slowly around the piece and take $minPhotos or more photos, each overlapping the last. '
+                      'Use even light, keep the whole piece in frame, and avoid shiny glare.'
+                  : 'Record one slow walk-around, up to 90 seconds. Keep the whole piece in frame '
+                      'and move steadily. Even light works best.'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            if (isPhotos) ...[
+              FilledButton.icon(
+                  onPressed: uploading ? null : _takePhoto,
+                  icon: const Icon(Icons.photo_camera),
+                  label: const Text('Take photo')),
+              OutlinedButton.icon(
+                  onPressed: uploading ? null : _pickPhotos,
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Choose photos')),
+            ] else ...[
+              FilledButton.icon(
+                  onPressed: uploading ? null : () => _video(ImageSource.camera),
+                  icon: const Icon(Icons.videocam),
+                  label: const Text('Record video')),
+              OutlinedButton.icon(
+                  onPressed: uploading ? null : () => _video(ImageSource.gallery),
+                  icon: const Icon(Icons.video_library),
+                  label: const Text('Choose video')),
+            ],
+          ]),
+          const SizedBox(height: 8),
+          Text(isPhotos
+              ? '${_paths.length} photo${_paths.length == 1 ? '' : 's'} chosen'
+              : (_paths.isEmpty ? 'No video chosen' : 'Video chosen')),
+          if (isPhotos && _paths.isNotEmpty)
+            SizedBox(
+              height: 76,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _paths.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (_, i) => Stack(children: [
+                  Image.file(File(_paths[i]), width: 76, height: 76, fit: BoxFit.cover, cacheWidth: 152),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: InkWell(
+                      onTap: uploading ? null : () => setState(() => _paths.removeAt(i)),
+                      child: const Icon(Icons.cancel, size: 20, color: Colors.white),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _width,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            enabled: !uploading,
+            decoration: const InputDecoration(
+              labelText: 'Real width of the piece (mm), optional',
+              helperText: 'Measure it with a tape. It sets the true size of the 3D model.',
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _quality,
+            decoration: const InputDecoration(labelText: 'Quality'),
+            items: const [
+              DropdownMenuItem(value: 'fast', child: Text('Fast (rough shape)')),
+              DropdownMenuItem(value: 'normal', child: Text('Normal')),
+              DropdownMenuItem(value: 'high', child: Text('High (slower)')),
+            ],
+            onChanged: uploading ? null : (v) => setState(() => _quality = v ?? 'normal'),
+          ),
+          if (widget.session.isStaffLead && _items.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String?>(
+              initialValue: _itemId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Product (optional)'),
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('Choose later')),
+                for (final i in _items)
+                  DropdownMenuItem<String?>(value: i.id, child: Text('${i.name}  (${i.sku})')),
+              ],
+              onChanged: uploading ? null : (v) => setState(() => _itemId = v),
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+          const SizedBox(height: 16),
+          if (uploading) ...[
+            LinearProgressIndicator(value: _progress),
+            const SizedBox(height: 6),
+            Text('Uploading ${(100 * (_progress ?? 0)).round()}%. Keep the app open.'),
+          ] else
+            FilledButton.icon(
+              onPressed: _upload,
+              icon: const Icon(Icons.cloud_upload),
+              label: Text(_unfinishedScan != null ? 'Try again' : 'Upload'),
+            ),
+        ]),
+      ),
+    );
+  }
+}
