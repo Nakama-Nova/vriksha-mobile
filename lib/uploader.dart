@@ -52,15 +52,19 @@ class ScanUploader {
     required String kind,
     required List<CaptureFile> files,
     String? itemId,
+    String? restorationId,
     double? realWidthMm,
     String quality = 'normal',
+    bool gcode = false,
     void Function(double fraction)? onProgress,
   }) async {
     final scan = await api.createScan(
       sourceKind: kind,
       itemId: itemId,
+      restorationId: restorationId,
       realWidthMm: realWidthMm,
       quality: quality,
+      gcode: gcode,
     );
     return resume(scan.id, files, onProgress: onProgress);
   }
