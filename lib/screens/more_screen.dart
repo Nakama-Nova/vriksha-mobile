@@ -34,7 +34,7 @@ class MoreScreen extends StatelessWidget {
             onTap: () => showLicensePage(
               context: context,
               applicationName: 'Vriksha Capture',
-              applicationLegalese: 'MIT License. Copyright (c) 2026 Nakama Nova',
+              applicationLegalese: 'Copyright (c) 2026 Nakama Nova. All rights reserved. Proprietary software.',
             ),
           ),
           const SizedBox(height: 24),

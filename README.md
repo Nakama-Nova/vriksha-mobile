@@ -31,4 +31,4 @@ Backend `nakamadesk-backend`, scan jobs API (`docs/design/scan-and-lab.md`, sect
 
 ## Licence
 
-MIT, see `LICENSE`. Third-party packages' licences are listed inside the app (Licences button).
+Proprietary software. Copyright (c) 2026 Nakama Nova, all rights reserved. It may not be copied, modified or shared; see `LICENSE`. Third-party packages keep their own licences, listed inside the app (Licences button).
