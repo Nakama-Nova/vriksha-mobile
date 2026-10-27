@@ -15,6 +15,9 @@ class Session {
 
   /// Owner and manager see every scan and can pick the product.
   bool get isStaffLead => role == 'owner' || role == 'manager';
+
+  /// Temple restorations are for the owner and artisans only.
+  bool get canRestore => role == 'owner' || role == 'artisan';
 }
 
 /// The token lives in the phone's secure storage; the rest is not secret.

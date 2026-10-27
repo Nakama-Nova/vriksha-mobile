@@ -68,4 +68,37 @@ void main() {
         client: MockClient((_) async => throw http.ClientException('no route')));
     expect(() => api.scans(), throwsA(isA<ApiException>().having((e) => e.status, 'status', 0)));
   });
+  test('a scan can be filed under a restoration and ask for G-code', () async {
+    late Map<String, dynamic> body;
+    final api = clientFor((r) {
+      body = jsonDecode(r.body) as Map<String, dynamic>;
+      return http.Response(
+          jsonEncode({
+            'id': 's1', 'status': 'created', 'source_kind': 'photos', 'files': 0,
+            'source_bytes': 0, 'progress': 0, 'created_at': '2026-10-27T10:00:00Z',
+          }),
+          201);
+    }, token: 't');
+    await api.createScan(sourceKind: 'photos', restorationId: 'r1', realWidthMm: 600, gcode: true);
+    expect(body['restoration_id'], 'r1');
+    expect(body['item_id'], isNull);
+    expect(body['params'], {'real_width_mm': 600, 'quality': 'normal', 'gcode': true});
+  });
+
+  test('only open restorations are offered', () async {
+    final api = clientFor((r) {
+      expect(r.url.path, '/restorations');
+      return http.Response(
+          jsonEncode([
+            {'id': 'a', 'title': 'Nandi', 'temple_name': 'Veerabhadra', 'status': 'planned'},
+            {'id': 'b', 'title': 'Old door', 'temple_name': 'Kasi', 'status': 'restored'},
+            {'id': 'c', 'title': 'Pillar', 'temple_name': 'Kasi', 'status': 'cancelled'},
+            {'id': 'd', 'title': 'Guardian', 'temple_name': 'Lepakshi', 'status': 'review'},
+          ]),
+          200);
+    }, token: 't');
+    final open = await api.restorations();
+    expect(open.map((e) => e.id), ['a', 'd']);
+    expect(open.first.temple, 'Veerabhadra');
+  });
 }

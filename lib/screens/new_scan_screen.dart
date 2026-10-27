@@ -26,7 +26,10 @@ class _NewScanScreenState extends State<NewScanScreen> {
   String _quality = 'normal';
   final List<String> _paths = [];
   List<CatalogItem> _items = const [];
+  List<RestorationRef> _restorations = const [];
   String? _itemId;
+  String? _restorationId;
+  bool _gcode = false;
   String? _error;
   double? _progress;
   String? _unfinishedScan; // set when an upload failed, so "Try again" resumes it
@@ -38,6 +41,11 @@ class _NewScanScreenState extends State<NewScanScreen> {
     if (widget.session.isStaffLead) {
       widget.session.api.items().then((v) {
         if (mounted) setState(() => _items = v);
+      }).catchError((_) {});
+    }
+    if (widget.session.canRestore) {
+      widget.session.api.restorations().then((v) {
+        if (mounted) setState(() => _restorations = v);
       }).catchError((_) {});
     }
   }
@@ -77,6 +85,10 @@ class _NewScanScreenState extends State<NewScanScreen> {
       setState(() => _error = 'The real width must be between 1 and 5000 mm.');
       return;
     }
+    if (_gcode && width == null) {
+      setState(() => _error = 'G-code needs the real width of the piece. Measure it and enter it.');
+      return;
+    }
     setState(() {
       _error = null;
       _progress = 0;
@@ -91,9 +103,11 @@ class _NewScanScreenState extends State<NewScanScreen> {
         await uploader.upload(
           kind: _kind,
           files: files,
-          itemId: _itemId,
+          itemId: _restorationId == null ? _itemId : null,
+          restorationId: _restorationId,
           realWidthMm: width,
           quality: _quality,
+          gcode: _gcode,
           onProgress: onProgress,
         );
       }
@@ -229,7 +243,31 @@ class _NewScanScreenState extends State<NewScanScreen> {
           ],
           onChanged: uploading ? null : (v) => setState(() => _quality = v ?? 'normal'),
         ),
-        if (widget.session.isStaffLead && _items.isNotEmpty) ...[
+        if (widget.session.canRestore && _restorations.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            initialValue: _restorationId,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Temple restoration (optional)',
+              helperText: 'Pick one to keep this scan with that restoration. Only the owner and artisans see it.',
+            ),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('Not for a restoration')),
+              for (final r in _restorations)
+                DropdownMenuItem<String?>(value: r.id, child: Text('${r.title}  (${r.temple})')),
+            ],
+            onChanged: uploading ? null : (v) => setState(() => _restorationId = v),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text('Also make CNC G-code (flat carvings; needs the width)'),
+            value: _gcode,
+            onChanged: uploading ? null : (v) => setState(() => _gcode = v ?? false),
+          ),
+        ],
+        if (widget.session.isStaffLead && _items.isNotEmpty && _restorationId == null) ...[
           const SizedBox(height: 12),
           DropdownButtonFormField<String?>(
             initialValue: _itemId,

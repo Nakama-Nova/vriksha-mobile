@@ -44,6 +44,17 @@ class FileSpec {
       {'filename': filename, 'content_type': contentType, 'size': size};
 }
 
+/// A temple restoration a scan can be filed under.
+class RestorationRef {
+  RestorationRef(this.id, this.title, this.temple);
+  final String id;
+  final String title;
+  final String temple;
+
+  factory RestorationRef.fromJson(Map<String, dynamic> j) =>
+      RestorationRef(j['id'] as String, j['title'] as String, j['temple_name'] as String);
+}
+
 class ScanJob {
   ScanJob({
     required this.id,
@@ -174,22 +185,35 @@ class ApiClient {
         .toList();
   }
 
+  /// Projects that are still open (not restored or cancelled), newest first.
+  Future<List<RestorationRef>> restorations() async {
+    final r = await _send(() => _http.get(_uri('/restorations'), headers: _headers));
+    return (_decode(r) as List)
+        .cast<Map<String, dynamic>>()
+        .where((j) => j['status'] != 'restored' && j['status'] != 'cancelled')
+        .map(RestorationRef.fromJson)
+        .toList();
+  }
+
   Future<ScanJob> createScan({
     required String sourceKind,
     String? itemId,
+    String? restorationId,
     double? realWidthMm,
     String quality = 'normal',
+    bool gcode = false,
   }) async {
     final r = await _send(() => _http.post(
           _uri('/scans'),
           headers: _headers,
           body: jsonEncode({
             'item_id': itemId,
+            'restoration_id': restorationId,
             'source_kind': sourceKind,
             'params': {
               'real_width_mm': realWidthMm,
               'quality': quality,
-              'gcode': false,
+              'gcode': gcode,
             },
           }),
         ));
