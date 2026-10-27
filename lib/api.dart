@@ -202,6 +202,7 @@ class ApiClient {
     double? realWidthMm,
     String quality = 'normal',
     bool gcode = false,
+    String shape = 'full',
   }) async {
     final r = await _send(() => _http.post(
           _uri('/scans'),
@@ -214,6 +215,7 @@ class ApiClient {
               'real_width_mm': realWidthMm,
               'quality': quality,
               'gcode': gcode,
+              'shape': shape,
             },
           }),
         ));
