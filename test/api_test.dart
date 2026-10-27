@@ -82,7 +82,22 @@ void main() {
     await api.createScan(sourceKind: 'photos', restorationId: 'r1', realWidthMm: 600, gcode: true);
     expect(body['restoration_id'], 'r1');
     expect(body['item_id'], isNull);
-    expect(body['params'], {'real_width_mm': 600, 'quality': 'normal', 'gcode': true});
+    expect(body['params'], {'real_width_mm': 600, 'quality': 'normal', 'gcode': true, 'shape': 'full'});
+  });
+
+  test('a flat carving is sent as a relief scan', () async {
+    late Map<String, dynamic> body;
+    final api = clientFor((r) {
+      body = jsonDecode(r.body) as Map<String, dynamic>;
+      return http.Response(
+          jsonEncode({
+            'id': 's2', 'status': 'created', 'source_kind': 'photos', 'files': 0,
+            'source_bytes': 0, 'progress': 0, 'created_at': '2026-10-27T10:00:00Z',
+          }),
+          201);
+    }, token: 't');
+    await api.createScan(sourceKind: 'photos', restorationId: 'r1', shape: 'relief');
+    expect((body['params'] as Map)['shape'], 'relief');
   });
 
   test('only open restorations are offered', () async {

@@ -9,7 +9,7 @@ import '../theme.dart';
 import '../uploader.dart';
 import '../widgets.dart';
 
-const minPhotos = 8;
+const minPhotos = 8; // a full 3D object; a flat carving needs just one straight-on photo
 
 class NewScanScreen extends StatefulWidget {
   const NewScanScreen({super.key, required this.session});
@@ -23,6 +23,7 @@ class _NewScanScreenState extends State<NewScanScreen> {
   final _picker = ImagePicker();
   final _width = TextEditingController();
   String _kind = 'photos';
+  String _shape = 'relief'; // relief = flat carving, full = 3D object
   String _quality = 'normal';
   final List<String> _paths = [];
   List<CatalogItem> _items = const [];
@@ -72,12 +73,12 @@ class _NewScanScreenState extends State<NewScanScreen> {
   }
 
   Future<void> _upload() async {
-    if (_kind == 'photos' && _paths.length < minPhotos) {
-      setState(() => _error = 'Take at least $minPhotos photos, walking around the piece.');
+    if (_kind == 'photos' && _shape == 'full' && _paths.length < minPhotos) {
+      setState(() => _error = 'A full 3D object needs at least $minPhotos photos, walking around it. For a flat carving, choose Flat carving.');
       return;
     }
     if (_paths.isEmpty) {
-      setState(() => _error = 'Record or choose a video first.');
+      setState(() => _error = _kind == 'photos' ? 'Take or choose a photo first.' : 'Record or choose a video first.');
       return;
     }
     final width = double.tryParse(_width.text.trim());
@@ -108,6 +109,7 @@ class _NewScanScreenState extends State<NewScanScreen> {
           realWidthMm: width,
           quality: _quality,
           gcode: _gcode,
+          shape: _shape,
           onProgress: onProgress,
         );
       }
@@ -154,6 +156,15 @@ class _NewScanScreenState extends State<NewScanScreen> {
       body: ListView(padding: const EdgeInsets.all(20), children: [
         SegmentedButton<String>(
           segments: const [
+            ButtonSegment(value: 'relief', label: Text('Flat carving'), icon: Icon(Icons.crop_portrait)),
+            ButtonSegment(value: 'full', label: Text('Full 3D object'), icon: Icon(Icons.view_in_ar_outlined)),
+          ],
+          selected: {_shape},
+          onSelectionChanged: uploading ? null : (s) => setState(() => _shape = s.first),
+        ),
+        const SizedBox(height: 10),
+        SegmentedButton<String>(
+          segments: const [
             ButtonSegment(value: 'photos', label: Text('Photos'), icon: Icon(Icons.photo_camera_outlined)),
             ButtonSegment(value: 'video', label: Text('Video'), icon: Icon(Icons.videocam_outlined)),
           ],
@@ -162,11 +173,16 @@ class _NewScanScreenState extends State<NewScanScreen> {
         ),
         const SizedBox(height: 14),
         WarmCard(
-          child: Text(isPhotos
-              ? 'Walk slowly around the piece and take $minPhotos or more photos, each overlapping the last. '
-                  'Use even light, keep the whole piece in frame, and avoid shiny glare.'
-              : 'Record one slow walk-around, up to 90 seconds. Keep the whole piece in frame '
-                  'and move steadily. Even light works best.'),
+          child: Text(_shape == 'relief'
+              ? 'Stand straight in front of the carving, keep it flat to the camera and take one sharp photo in even light '
+                  '(more are fine: the sharpest is used). Any PC can build this in a minute or two. The depth is '
+                  'estimated, so enter the real width.'
+              : isPhotos
+                  ? 'Walk slowly around the piece and take $minPhotos or more photos, each overlapping the last. '
+                      'Use even light, keep the whole piece in frame, and avoid shiny glare. '
+                      'This waits for a PC with an NVIDIA graphics card.'
+                  : 'Record one slow walk-around, up to 90 seconds. Keep the whole piece in frame '
+                      'and move steadily. Even light works best. This waits for a PC with an NVIDIA graphics card.'),
         ),
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [

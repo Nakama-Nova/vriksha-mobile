@@ -56,6 +56,7 @@ class ScanUploader {
     double? realWidthMm,
     String quality = 'normal',
     bool gcode = false,
+    String shape = 'full',
     void Function(double fraction)? onProgress,
   }) async {
     final scan = await api.createScan(
@@ -65,6 +66,7 @@ class ScanUploader {
       realWidthMm: realWidthMm,
       quality: quality,
       gcode: gcode,
+      shape: shape,
     );
     return resume(scan.id, files, onProgress: onProgress);
   }
