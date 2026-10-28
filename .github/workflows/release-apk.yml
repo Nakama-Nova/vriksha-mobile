@@ -1,0 +1,80 @@
+name: Release APK
+
+# Push a tag like v1.1.0 and this builds the signed APK and publishes it as a GitHub
+# Release: VrikshaCapture-1.1.0.apk and VrikshaCapture-1.1.0.apk.sha256. The shop's server
+# reads that release, and the phone app tells people when a newer version is out.
+#
+# Updating an installed app needs the SAME signing key every time, so this refuses to
+# publish without the release key (repository secrets ANDROID_KEYSTORE_BASE64,
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD). Without it
+# the APK would be debug-signed and Android would reject it as an update.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write   # only used to attach the APK to the tag's release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from the tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag $TAG is not like v1.2.3"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # a higher build number for every release, as Android requires: 1.2.3 -> 10203
+          IFS=. read -r MA MI PA <<< "$VERSION"
+          echo "build=$((MA * 10000 + MI * 100 + PA))" >> "$GITHUB_OUTPUT"
+
+      - name: Release key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::The release key is not set (ANDROID_KEYSTORE_BASE64). Not publishing an APK that cannot update an installed app."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.8"
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Build the APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --build-name "${{ steps.version.outputs.version }}" --build-number "${{ steps.version.outputs.build }}"
+
+      - name: Name it and checksum it
+        run: |
+          NAME="VrikshaCapture-${{ steps.version.outputs.version }}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$NAME"
+          sha256sum "$NAME" > "$NAME.sha256"
+          echo "APK=$NAME" >> "$GITHUB_ENV"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" "$APK" "$APK.sha256" --title "${GITHUB_REF_NAME}" --generate-notes

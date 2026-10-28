@@ -32,3 +32,9 @@ Backend `nakamadesk-backend`, scan jobs API (`docs/design/scan-and-lab.md`, sect
 ## Licence
 
 Proprietary software. Copyright (c) 2026 Nakama Nova, all rights reserved. It may not be copied, modified or shared; see `LICENSE`. Third-party packages keep their own licences, listed inside the app (Licences button).
+
+## Alerts and updates
+
+- **Alerts tab.** The app asks the shop's server (`GET /notifications`) every minute while it is open, and about every 15 minutes in the background (Android WorkManager) when it is closed. New website orders, money received, low stock and finished 3D scans show in the list and as phone notifications, depending on the person's role (the server decides). No Google or Firebase account is needed. Android is the limit: the background check cannot run more often than every 15 minutes, and a phone in battery-saver may delay it. Instant push would need a Firebase project.
+- **Update alerts.** The app asks the server for the newest published version (`GET /app/updates/mobile/latest`). A newer one shows as a banner and a card on the Alerts tab, with a **Download** button that opens the signed APK link in the browser; Android then offers to install it. "Later" hides it for that version. The background check also sends one notification per new version.
+- **Publishing a version.** Push a tag such as `v1.1.0`. The `Release APK` workflow builds `VrikshaCapture-1.1.0.apk` with its `.sha256` and attaches them to a GitHub Release, which is where the server looks. It needs the release key in the repository secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) and refuses to publish without it, because an APK signed with a different key cannot update an installed app.
