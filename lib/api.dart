@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'notices.dart';
+
 /// A server answer that was not a success. [message] is safe to show to the user.
 class ApiException implements Exception {
   ApiException(this.status, this.message);
@@ -110,6 +112,14 @@ class ScanJob {
       };
 }
 
+/// The newest published version of this app.
+class LatestApp {
+  LatestApp(this.version, this.notes, this.size);
+  final String version;
+  final String notes;
+  final int size;
+}
+
 class CatalogItem {
   CatalogItem(this.id, this.name, this.sku);
   final String id;
@@ -176,6 +186,30 @@ class ApiClient {
     final j = _decode(r) as Map<String, dynamic>;
     return LoginResult(
         j['access_token'] as String, j['username'] as String, j['role'] as String);
+  }
+
+  /// What is new for this person since [since] (a UTC time from the last answer).
+  /// Without [since] the server only says where to start.
+  Future<NoticeFeed> notifications({String? since}) async {
+    final r = await _send(() => _http.get(
+          _uri('/notifications', since == null ? null : {'since': since}),
+          headers: _headers,
+        ));
+    return NoticeFeed.fromJson(_decode(r) as Map<String, dynamic>);
+  }
+
+  /// The newest published version of this app, or null when none is published yet.
+  Future<LatestApp?> latestApp() async {
+    final r = await _send(() => _http.get(_uri('/app/updates/mobile/latest'), headers: _headers));
+    if (r.statusCode == 404) return null;
+    final j = _decode(r) as Map<String, dynamic>;
+    return LatestApp(j['version'] as String, (j['notes'] as String?) ?? '', (j['size'] as num?)?.toInt() ?? 0);
+  }
+
+  /// A short-lived download address for [version]; open it in the browser.
+  Future<String> appDownloadUrl(String version) async {
+    final r = await _send(() => _http.get(_uri('/app/updates/mobile/download/$version'), headers: _headers));
+    return (_decode(r) as Map<String, dynamic>)['url'] as String;
   }
 
   Future<List<ScanJob>> scans() async {

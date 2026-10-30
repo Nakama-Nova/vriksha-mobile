@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'background.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
 import 'session.dart';
@@ -47,6 +48,9 @@ class _GateState extends State<_Gate> {
   void _signedIn(Session s) => setState(() => _session = Future.value(s));
 
   Future<void> _signOut() async {
+    try {
+      await stopBackgroundChecks(); // nothing is fetched for nobody
+    } catch (_) {}
     await SessionStore.clear();
     setState(() => _session = Future.value(null));
   }
