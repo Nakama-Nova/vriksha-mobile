@@ -106,6 +106,23 @@ class CatalogItem {
   final String sku;
 }
 
+/// Plain http:// is only acceptable on this phone's own network (the shop's PC or
+/// server). Anything reachable over the internet must be https://.
+bool isInsecureRemote(String url) {
+  final u = Uri.tryParse(url.trim());
+  if (u == null || u.scheme != 'http') return false;
+  final h = u.host.toLowerCase();
+  if (h == 'localhost' || h.endsWith('.local')) return false;
+  final p = h.split('.');
+  if (p.length == 4 && p.every((x) => int.tryParse(x) != null)) {
+    final a = int.parse(p[0]), b = int.parse(p[1]);
+    if (a == 10 || a == 127 || (a == 192 && b == 168) || (a == 172 && b >= 16 && b <= 31)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class ApiClient {
   ApiClient(String baseUrl, {this.token, http.Client? client})
       : baseUrl = baseUrl.trim().replaceAll(RegExp(r'/+$'), ''),
@@ -154,6 +171,10 @@ class ApiClient {
       throw ApiException(0, 'The server did not answer. Check the connection.');
     } on http.ClientException {
       throw ApiException(0, 'Cannot reach the server. Check the connection.');
+    } on Exception catch (e) {
+      // e.g. a failed secure (TLS) handshake, which is not a ClientException
+      throw ApiException(0,
+          'Could not connect (${e.runtimeType}). Check the date, time and connection of the phone.');
     }
   }
 
@@ -212,11 +233,25 @@ class ApiClient {
   /// Send one file to the store. The body is streamed (never held in memory) and
   /// [onBytes] reports each chunk as it goes out.
   Future<void> put(UploadTarget t, Stream<List<int>> body, int length,
-      void Function(int) onBytes) async {
-    final req = http.StreamedRequest(t.method, Uri.parse(t.url))
+      void Function(int) onBytes,
+      {Duration stall = const Duration(seconds: 60)}) async {
+    // A big video is allowed to take as long as it needs, but not to sit still: if no
+    // data moves for [stall] the upload is aborted (the uploader then retries it).
+    final stalled = Completer<void>();
+    Timer? idle;
+    void bump() {
+      idle?.cancel();
+      idle = Timer(stall, () {
+        if (!stalled.isCompleted) stalled.complete();
+      });
+    }
+
+    final req = http.AbortableStreamedRequest(t.method, Uri.parse(t.url),
+        abortTrigger: stalled.future)
       ..headers.addAll(t.headers)
       ..contentLength = length;
     final counted = body.map((chunk) {
+      bump();
       onBytes(chunk.length);
       return chunk;
     });
@@ -224,14 +259,20 @@ class ApiClient {
         .addStream(counted)
         .catchError((Object e) => req.sink.addError(e))
         .whenComplete(req.sink.close));
+    bump();
     try {
       final res = await _http.send(req);
+      bump();
       await res.stream.drain<void>();
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw ApiException(res.statusCode, 'Upload failed (${res.statusCode})');
       }
+    } on http.RequestAbortedException {
+      throw ApiException(0, 'The upload stalled. Check the connection.');
     } on http.ClientException {
       throw ApiException(0, 'Upload interrupted. Check the connection.');
+    } finally {
+      idle?.cancel();
     }
   }
 
@@ -248,6 +289,41 @@ class ApiClient {
     final r = await _send(
         () => _http.post(_uri('/scans/$scanId/cancel'), headers: _headers));
     _decode(r);
+  }
+
+  // The desktop's screens all speak plain JSON to the same server; one generic
+  // call per verb keeps each screen to its own logic. Paths match the desktop's.
+  Future<dynamic> getJson(String path, [Map<String, String>? query]) async =>
+      _decode(await _send(() => _http.get(_uri(path, query), headers: _headers)));
+
+  Future<dynamic> _body(String verb, String path, Object? body,
+          Map<String, String>? query) async =>
+      _decode(await _send(() {
+        final u = _uri(path, query);
+        final b = body == null ? null : jsonEncode(body);
+        return switch (verb) {
+          'POST' => _http.post(u, headers: _headers, body: b),
+          'PUT' => _http.put(u, headers: _headers, body: b),
+          'PATCH' => _http.patch(u, headers: _headers, body: b),
+          _ => _http.delete(u, headers: _headers),
+        };
+      }));
+
+  Future<dynamic> postJson(String path, [Object? body, Map<String, String>? query]) =>
+      _body('POST', path, body, query);
+  Future<dynamic> putJson(String path, Object body) => _body('PUT', path, body, null);
+  Future<dynamic> patchJson(String path, [Object? body]) => _body('PATCH', path, body, null);
+  Future<dynamic> deleteJson(String path) => _body('DELETE', path, null, null);
+
+  /// Every product: the server returns at most 100 per call, so read page by page.
+  Future<List<Map<String, dynamic>>> allItems() async {
+    final out = <Map<String, dynamic>>[];
+    while (true) {
+      final page = (await getJson('/items/', {'limit': '100', 'offset': '${out.length}'}))
+          as List;
+      out.addAll(page.cast<Map<String, dynamic>>());
+      if (page.length < 100) return out;
+    }
   }
 
   /// Owner and manager only (the server refuses everyone else).

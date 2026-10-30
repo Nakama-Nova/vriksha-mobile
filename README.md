@@ -2,7 +2,11 @@
 
 Phone app for the Vriksha Studios shop. It captures a piece (photos or one video), uploads it straight to the shop's private file store, and shows what the workshop PC is doing with it.
 
-- Sign in with your shop username; enter the server address once.
+The app mirrors the desktop (`nakama-desktop`): the same sidebar (open it with the menu button) with the same screens in the same order and the same role rules: Home, New Bill, Stock, Buyers, Bill History, Reports, Workforce, 3D Lab (scan capture, below), Materials, Purchases, Staff, Wages, Expenses, Profit, plus My password and Sign Out. Not on the phone yet: offline billing, bill PDFs, product photos/website fields, categories/brands/suppliers editing, the web 3D viewer.
+
+The server address is fixed in the app (`lib/config.dart`, like the desktop's `API_BASE_URL`), so sign-in asks only for username and password. Build for another server with `--dart-define=API_BASE_URL=https://your-server`.
+
+- Sign in with your shop username and password.
 - **New scan**: choose Photos (8 or more, walking around the piece) or one Video (up to 90 s), optionally the real width in mm and a product (owner/manager), then Upload.
 - **My scans** (owner/manager: **All scans**): status in plain words, progress while the workshop PC is working, the reason if it failed, Cancel while it is waiting.
 

@@ -29,11 +29,32 @@ android {
         versionName = flutter.versionName
     }
 
+    // The release key comes from the environment (CI decodes it from a secret; locally
+    // set the same variables). Without it the build falls back to the debug key, which
+    // is DIFFERENT on every machine and every CI run, so Android refuses to install
+    // such a build over an earlier one.
+    val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")?.let { file(it) }
+    val hasReleaseKey = releaseKeystore != null && releaseKeystore.exists()
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("WARNING: no release key set; signing with the debug key (not updatable).")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
