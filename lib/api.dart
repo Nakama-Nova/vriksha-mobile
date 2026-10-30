@@ -44,15 +44,18 @@ class FileSpec {
       {'filename': filename, 'content_type': contentType, 'size': size};
 }
 
-/// A temple restoration a scan can be filed under.
+/// A restoration project a scan can be filed under. [temple] is empty for a piece
+/// bought in to be finished (the server sends no temple name for those).
 class RestorationRef {
   RestorationRef(this.id, this.title, this.temple);
   final String id;
   final String title;
   final String temple;
 
-  factory RestorationRef.fromJson(Map<String, dynamic> j) =>
-      RestorationRef(j['id'] as String, j['title'] as String, j['temple_name'] as String);
+  String get label => temple.isEmpty ? title : '$title  ($temple)';
+
+  factory RestorationRef.fromJson(Map<String, dynamic> j) => RestorationRef(
+      j['id'] as String, j['title'] as String, (j['temple_name'] as String?) ?? '');
 }
 
 class ScanJob {
@@ -64,6 +67,7 @@ class ScanJob {
     required this.sourceBytes,
     required this.progress,
     required this.createdAt,
+    this.shape = 'full',
     this.itemName,
     this.note,
     this.error,
@@ -77,6 +81,7 @@ class ScanJob {
   final int sourceBytes;
   final int progress;
   final DateTime createdAt;
+  final String shape; // 'relief' = flat carving, 'full' = 3D object
   final String? itemName;
   final String? note;
   final String? error;
@@ -90,6 +95,7 @@ class ScanJob {
         sourceBytes: (j['source_bytes'] as num).toInt(),
         progress: (j['progress'] as num).toInt(),
         createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
+        shape: ((j['params'] as Map?)?['shape'] as String?) ?? 'full',
         itemName: j['item_name'] as String?,
         note: j['note'] as String?,
         error: j['error'] as String?,
@@ -98,11 +104,11 @@ class ScanJob {
 
   bool get canCancel => status == 'created' || status == 'uploaded';
 
-  /// Plain words for the shop floor.
+  /// Plain words for the shop floor (same words as the desktop app).
   String get statusLabel => switch (status) {
-        'created' => 'Not finished uploading',
+        'created' => 'Uploading',
         'uploaded' => 'Waiting for the workshop PC',
-        'processing' => 'Being processed',
+        'processing' => 'Building 3D model',
         'done' => 'Done',
         'failed' => 'Failed',
         'cancelled' => 'Cancelled',

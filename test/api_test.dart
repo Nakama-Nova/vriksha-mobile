@@ -56,6 +56,13 @@ void main() {
       'error': null, 'worker': null,
     });
     expect(s.statusLabel, 'Waiting for the workshop PC');
+    expect(s.shape, 'full');
+    final words = {
+      for (final st in ['created', 'processing']) st: ScanJob.fromJson({
+        'id': 'x', 'status': st, 'source_kind': 'photos', 'files': 1, 'source_bytes': 5, 'progress': 0,
+        'created_at': '2026-10-26T10:00:00Z', 'params': {'shape': 'relief'}}).statusLabel
+    };
+    expect(words, {'created': 'Uploading', 'processing': 'Building 3D model'}); // same words as the desktop app
     expect(s.canCancel, isTrue);
     expect(s.itemName, 'Chair');
     expect(ScanJob.fromJson({...{
@@ -115,5 +122,16 @@ void main() {
     final open = await api.restorations();
     expect(open.map((e) => e.id), ['a', 'd']);
     expect(open.first.temple, 'Veerabhadra');
+  });
+
+  test('a piece bought in to be finished has no temple and is still offered', () async {
+    final api = clientFor((r) => http.Response(
+        jsonEncode([
+          {'id': 'f', 'title': 'Bought door', 'temple_name': null, 'status': 'finishing'},
+          {'id': 'a', 'title': 'Nandi', 'temple_name': 'Veerabhadra', 'status': 'planned'},
+        ]),
+        200), token: 't');
+    final open = await api.restorations();
+    expect(open.map((e) => e.label), ['Bought door', 'Nandi  (Veerabhadra)']);
   });
 }
