@@ -81,6 +81,7 @@ class FakeBackend {
 }
 
 void main() {
+  captureTests();
   final files = [
     CaptureFile('/p/0.jpg', 3),
     CaptureFile('/p/1.jpg', 3),
@@ -136,5 +137,24 @@ void main() {
     expect(CaptureFile('/a/b.mov', 1).contentType, 'video/quicktime');
     expect(CaptureFile('/a/b.jpeg', 1).contentType, 'image/jpeg');
     expect(CaptureFile(r'C:\a\b.mp4', 1).name, 'b.mp4');
+  });
+}
+
+void captureTests() {
+  CaptureFile photo(String n, [int size = 1000]) => CaptureFile('/p/$n', size);
+
+  test('capture rules match the desktop app and the server', () {
+    final eight = [for (var i = 0; i < 8; i++) photo('$i.jpg')];
+    expect(captureProblem('photos', 'full', eight), isNull);
+    expect(captureProblem('photos', 'full', []), 'Take or choose a photo first.');
+    expect(captureProblem('photos', 'full', [photo('a.jpg')]), contains('at least 8 photos'));
+    expect(captureProblem('photos', 'relief', [photo('a.jpg')]), isNull); // a flat carving needs one
+    expect(captureProblem('photos', 'relief', [for (var i = 0; i < 301; i++) photo('$i.jpg')]),
+        'At most 300 photos in one scan.');
+    expect(captureProblem('photos', 'relief', [photo('a.heic')]), contains('.jpg, .jpeg, .png'));
+    expect(captureProblem('photos', 'relief', [photo('a.jpg', 101 * 1024 * 1024)]), contains('too big'));
+    expect(captureProblem('video', 'full', [photo('a.mp4'), photo('b.mp4')]), 'Choose one video.');
+    expect(captureProblem('video', 'full', [photo('a.mp4')]), isNull);
+    expect(captureProblem('video', 'full', [photo('a.avi')]), contains('.mp4, .mov'));
   });
 }

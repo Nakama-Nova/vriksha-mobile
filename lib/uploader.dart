@@ -19,6 +19,36 @@ class CaptureFile {
   }
 }
 
+const _mb = 1024 * 1024;
+const maxPhotos = 300; // server limits, same as the desktop app
+const _minPhotos = 8;
+
+/// A plain-words problem with the chosen files, or null. Mirrors the server (and the
+/// desktop app) so nothing is created on the server for files it would refuse.
+String? captureProblem(String kind, String shape, List<CaptureFile> files) {
+  if (files.isEmpty) {
+    return kind == 'photos' ? 'Take or choose a photo first.' : 'Record or choose a video first.';
+  }
+  final photos = kind == 'photos';
+  if (!photos && files.length != 1) return 'Choose one video.';
+  if (photos && shape != 'relief' && files.length < _minPhotos) {
+    return 'A full 3D object needs at least $_minPhotos photos, walking around it. For a flat carving, choose Flat carving.';
+  }
+  if (files.length > maxPhotos) return 'At most $maxPhotos photos in one scan.';
+  final exts = photos ? const ['.jpg', '.jpeg', '.png'] : const ['.mp4', '.mov'];
+  final biggest = photos ? 100 * _mb : 1024 * _mb;
+  for (final f in files) {
+    final n = f.name.toLowerCase();
+    if (!exts.any(n.endsWith)) {
+      return '${f.name}: use ${exts.join(', ')} files for ${photos ? 'photos' : 'a video'}.';
+    }
+    if (f.size > biggest) {
+      return '${f.name} is too big (limit ${photos ? '100 MB a photo' : '1 GB for a video'}).';
+    }
+  }
+  return null;
+}
+
 /// The file could not be sent after all retries. The scan exists on the server in
 /// the "not finished" state, so [resume] can try again, or the user can cancel it.
 class UploadFailed implements Exception {

@@ -144,7 +144,7 @@ class _ScanCard extends StatelessWidget {
     final when = scan.createdAt;
     final date = '${when.day}/${when.month} ${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}';
     final title = scan.itemName ?? 'Scan $date';
-    final kind = scan.sourceKind == 'video' ? 'Video' : 'Photos';
+    final kind = '${scan.shape == 'relief' ? 'Flat carving' : '3D object'}, ${scan.sourceKind == 'video' ? 'video' : 'photos'}';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),

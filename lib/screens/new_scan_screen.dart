@@ -51,7 +51,15 @@ class _NewScanScreenState extends State<NewScanScreen> {
     }
   }
 
-  void _switchKind(String k) => setState(() {
+  /// Edit the chosen files. A half-sent scan was made for the old files, so it can
+  /// no longer be resumed: the next Upload starts a new scan.
+  void _edit(VoidCallback change) => setState(() {
+        change();
+        _unfinishedScan = null;
+        _unfinishedFiles = const [];
+      });
+
+  void _switchKind(String k) => _edit(() {
         _kind = k;
         _paths.clear();
         _error = null;
@@ -59,26 +67,24 @@ class _NewScanScreenState extends State<NewScanScreen> {
 
   Future<void> _takePhoto() async {
     final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 92);
-    if (x != null) setState(() => _paths.add(x.path));
+    if (x != null) _edit(() => _paths.add(x.path));
   }
 
   Future<void> _pickPhotos() async {
     final xs = await _picker.pickMultiImage(imageQuality: 92);
-    setState(() => _paths.addAll(xs.map((x) => x.path)));
+    if (xs.isNotEmpty) _edit(() => _paths.addAll(xs.map((x) => x.path)));
   }
 
   Future<void> _video(ImageSource src) async {
     final x = await _picker.pickVideo(source: src, maxDuration: const Duration(seconds: 90));
-    if (x != null) setState(() => _paths..clear()..add(x.path));
+    if (x != null) _edit(() => _paths..clear()..add(x.path));
   }
 
   Future<void> _upload() async {
-    if (_kind == 'photos' && _shape == 'full' && _paths.length < minPhotos) {
-      setState(() => _error = 'A full 3D object needs at least $minPhotos photos, walking around it. For a flat carving, choose Flat carving.');
-      return;
-    }
-    if (_paths.isEmpty) {
-      setState(() => _error = _kind == 'photos' ? 'Take or choose a photo first.' : 'Record or choose a video first.');
+    final files = [for (final p in _paths) CaptureFile(p, File(p).lengthSync())];
+    final problem = captureProblem(_kind, _shape, files);
+    if (problem != null) {
+      setState(() => _error = problem);
       return;
     }
     final width = double.tryParse(_width.text.trim());
@@ -94,7 +100,6 @@ class _NewScanScreenState extends State<NewScanScreen> {
       _error = null;
       _progress = 0;
     });
-    final files = [for (final p in _paths) CaptureFile(p, await File(p).length())];
     final uploader = ScanUploader(widget.session.api);
     void onProgress(double f) => mounted ? setState(() => _progress = f) : null;
     try {
@@ -229,7 +234,7 @@ class _NewScanScreenState extends State<NewScanScreen> {
                     right: 0,
                     top: 0,
                     child: InkWell(
-                      onTap: uploading ? null : () => setState(() => _paths.removeAt(i)),
+                      onTap: uploading ? null : () => _edit(() => _paths.removeAt(i)),
                       child: const Icon(Icons.cancel, size: 20, color: Colors.white),
                     ),
                   ),
@@ -271,7 +276,7 @@ class _NewScanScreenState extends State<NewScanScreen> {
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('Not for a restoration')),
               for (final r in _restorations)
-                DropdownMenuItem<String?>(value: r.id, child: Text('${r.title}  (${r.temple})')),
+                DropdownMenuItem<String?>(value: r.id, child: Text(r.label)),
             ],
             onChanged: uploading ? null : (v) => setState(() => _restorationId = v),
           ),
