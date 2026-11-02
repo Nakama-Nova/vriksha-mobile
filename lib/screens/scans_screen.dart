@@ -49,10 +49,6 @@ class _ScansScreenState extends State<ScansScreen> {
         _error = null;
       });
     } on ApiException catch (e) {
-      if (e.status == 401) {
-        widget.onSignOut();
-        return;
-      }
       if (mounted) setState(() => _error = e.message);
     }
   }
