@@ -6,7 +6,7 @@ Phone app for the Vriksha Studios shop. It captures a piece (photos or one video
 - **New scan**: choose Photos (8 or more, walking around the piece) or one Video (up to 90 s), optionally the real width in mm and a product (owner/manager), then Upload.
 - **My scans** (owner/manager: **All scans**): status in plain words, progress while the workshop PC is working, the reason if it failed, Cancel while it is waiting.
 
-Files never pass through the shop server: it hands the phone a short-lived signed address and the phone sends each file there (3 at a time, each retried up to 3 times). The phone holds no cloud keys. The login token is kept in the phone's secure storage.
+Files never pass through the shop server: it hands the phone a short-lived signed address and the phone sends each file there (3 at a time, each retried up to 3 times). The phone remembers which files of an upload are already stored, so if the app is closed, killed or signed out half-way, the Scans tab shows **Unfinished upload** with Resume (sends only what is missing) or Discard; a signed link that runs out mid-upload is replaced automatically. The phone holds no cloud keys. The login token is kept in the phone's secure storage.
 
 The previous Kotlin Android app is kept on the `legacy/kotlin` branch of this repository (retired; this Flutter app replaces it).
 

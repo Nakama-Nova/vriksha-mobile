@@ -6,8 +6,9 @@ import '../theme.dart';
 
 /// Design screen 1: warm background, gold logomark, serif name, brown button.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.onSignedIn});
+  const LoginScreen({super.key, required this.onSignedIn, this.notice});
   final void Function(Session) onSignedIn;
+  final String? notice; // e.g. "Your session ended"
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -17,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _server = TextEditingController();
   final _user = TextEditingController();
   final _pass = TextEditingController();
-  String? _error;
+  late String? _error = widget.notice;
   bool _busy = false;
   bool _show = false;
 

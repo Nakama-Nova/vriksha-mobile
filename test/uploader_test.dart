@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vriksha_capture/api.dart';
 import 'package:vriksha_capture/uploader.dart';
 
@@ -34,17 +35,25 @@ class FakeBackend {
   final calls = <String>[];
   final puts = <String, List<int>>{}; // url -> bytes received
   final putHeaders = <String, Map<String, String>>{};
-  int failFirstPutsOf = 0; // how many PUT attempts to the first file fail
+  int failFirstPutsOf = 0; // how many PUT attempts to the failing file fail
+  String failSuffix = '/0.jpg'; // which file those PUTs belong to
   int _failed = 0;
   int status = 200;
+  int firstLinksLive = 1 << 30; // PUTs the first presigned batch accepts before it "expires"
+  int _firstLinksUsed = 0;
+  int presigns = 0;
+  final presignSizes = <int>[]; // files asked for in each presign call
 
   MockClient get client => MockClient.streaming((req, body) async {
         final path = req.url.path;
         if (req.method == 'PUT') {
           final bytes = await body.expand((c) => c).toList();
-          if (path.endsWith('/0.jpg') && _failed < failFirstPutsOf) {
+          if (path.endsWith(failSuffix) && _failed < failFirstPutsOf) {
             _failed++;
             return http.StreamedResponse(Stream.value(utf8.encode('x')), 500);
+          }
+          if (req.url.query == 'sig=1' && ++_firstLinksUsed > firstLinksLive) {
+            return http.StreamedResponse(Stream.value(utf8.encode('expired')), 403);
           }
           puts[req.url.toString()] = bytes;
           putHeaders[req.url.toString()] = req.headers;
@@ -57,12 +66,14 @@ class FakeBackend {
           r = json(scanJson('created'), 201);
         } else if (path.endsWith('/presign')) {
           final files = (jsonDecode(text)['files'] as List);
+          presigns++;
+          presignSizes.add(files.length);
           r = json({
             'files': [
               for (var i = 0; i < files.length; i++)
                 {
-                  'key': 'scans/scan-1/src/$i.jpg',
-                  'url': 'https://store.invalid/scans/scan-1/src/$i.jpg?sig=1',
+                  'key': 'scans/scan-1/src/${files[i]['filename']}',
+                  'url': 'https://store.invalid/scans/scan-1/src/${files[i]['filename']}?sig=$presigns',
                   'method': 'PUT',
                   'headers': {'Content-Type': files[i]['content_type']},
                 }
@@ -96,7 +107,7 @@ void main() {
     final backend = FakeBackend();
     final progress = <double>[];
     final up = ScanUploader(ApiClient('https://shop.test/', token: 't', client: backend.client),
-        openRead: fakeRead, retryDelay: Duration.zero);
+        openRead: fakeRead, exists: (_) async => true, retryDelay: Duration.zero);
     final scan = await up.upload(kind: 'photos', files: files, onProgress: progress.add);
 
     expect(scan.status, 'uploaded');
@@ -104,7 +115,7 @@ void main() {
     expect(backend.puts.values.every((b) => b.length == 3), isTrue);
     expect(backend.putHeaders.values.first['Content-Type'], 'image/jpeg');
     expect(backend.calls, containsAllInOrder(['POST /scans', 'POST /scans/scan-1/presign']));
-    expect(backend.calls.last, 'keys scans/scan-1/src/0.jpg,scans/scan-1/src/1.jpg,scans/scan-1/src/2.jpg');
+    expect(backend.calls.last, 'keys scans/scan-1/src/0.jpg,scans/scan-1/src/1.jpg,scans/scan-1/src/2.png');
     expect(progress.last, 1.0);
     expect(progress, everyElement(inInclusiveRange(0.0, 1.0)));
   });
@@ -113,7 +124,7 @@ void main() {
     final backend = FakeBackend()..failFirstPutsOf = 2;
     final progress = <double>[];
     final up = ScanUploader(ApiClient('https://shop.test', token: 't', client: backend.client),
-        openRead: fakeRead, retryDelay: Duration.zero);
+        openRead: fakeRead, exists: (_) async => true, retryDelay: Duration.zero);
     await up.upload(kind: 'photos', files: files, onProgress: progress.add);
     expect(backend.puts.length, 3); // all arrived in the end
     expect(progress.last, 1.0);
@@ -123,12 +134,76 @@ void main() {
   test('gives up after the retries, keeps the scan id so it can resume, and does not complete', () async {
     final backend = FakeBackend()..failFirstPutsOf = 99;
     final up = ScanUploader(ApiClient('https://shop.test', token: 't', client: backend.client),
-        openRead: fakeRead, retries: 3, retryDelay: Duration.zero);
+        openRead: fakeRead, exists: (_) async => true, retries: 3, retryDelay: Duration.zero);
     await expectLater(
       up.upload(kind: 'photos', files: files),
       throwsA(isA<UploadFailed>().having((e) => e.scanId, 'scanId', 'scan-1')),
     );
     expect(backend.calls.where((c) => c.endsWith('/complete')), isEmpty);
+  });
+
+  group('an upload that does not finish in one go', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    ScanUploader uploaderFor(FakeBackend b, PendingStore store, {bool onPhone = true}) =>
+        ScanUploader(ApiClient('https://shop.test', token: 't', client: b.client),
+            store: store,
+            parallel: 1, // one at a time, so which file goes first is certain
+            openRead: fakeRead,
+            exists: (_) async => onPhone,
+            retries: 2,
+            retryDelay: Duration.zero);
+
+    test('after a restart only the files not yet sent go out, then it completes', () async {
+      final store = PendingStore('https://shop.test', 'asha');
+      final backend = FakeBackend()
+        ..failSuffix = '/2.png'
+        ..failFirstPutsOf = 99;
+      await expectLater(uploaderFor(backend, store).upload(kind: 'photos', files: files), throwsA(isA<UploadFailed>()));
+
+      final left = (await PendingStore('https://shop.test', 'asha').load())!; // what a fresh app start reads
+      expect(left.scanId, 'scan-1');
+      expect(left.sent, 2); // files 0 and 1 are already in the store
+
+      backend.failFirstPutsOf = 0; // the network is back
+      final scan = await uploaderFor(backend, store).resume(left.scanId, left.files);
+
+      expect(scan.status, 'uploaded');
+      expect(backend.presignSizes.last, 1); // asked for one link, not three
+      expect(backend.puts.length, 3); // each file is stored once; nothing was sent twice
+      expect(backend.calls.last, 'keys scans/scan-1/src/0.jpg,scans/scan-1/src/1.jpg,scans/scan-1/src/2.png');
+      expect(await store.load(), isNull); // finished: nothing left to resume
+    });
+
+    test('a link that runs out part-way is replaced with one request for what is left', () async {
+      final backend = FakeBackend()..firstLinksLive = 1;
+      final progress = <double>[];
+      final scan = await uploaderFor(backend, PendingStore('https://shop.test', 'asha'))
+          .upload(kind: 'photos', files: files, onProgress: progress.add);
+      expect(scan.status, 'uploaded');
+      expect(backend.presignSizes, [3, 2]); // one request per round, not one per file
+      expect(backend.puts.length, 3);
+      expect(progress, everyElement(lessThanOrEqualTo(1.0)));
+      expect(progress.last, 1.0);
+    });
+
+    test('a file that vanished from the phone is named, and nothing is sent', () async {
+      final backend = FakeBackend();
+      await expectLater(
+        uploaderFor(backend, PendingStore('https://shop.test', 'asha'), onPhone: false).resume('scan-1', files),
+        throwsA(isA<UploadFailed>()
+            .having((e) => e.reason, 'reason', allOf(contains('0.jpg'), contains('no longer on this phone')))),
+      );
+      expect(backend.calls, isEmpty);
+    });
+
+    test('each person on each server has their own unfinished upload', () async {
+      await PendingStore('https://a.test', 'asha').save(PendingUpload('s1', files));
+      expect(await PendingStore('https://a.test', 'ravi').load(), isNull);
+      expect(await PendingStore('https://b.test', 'asha').load(), isNull);
+      expect((await PendingStore('https://a.test', 'asha').load())!.files.map((f) => f.path),
+          ['/p/0.jpg', '/p/1.jpg', '/p/2.png']);
+    });
   });
 
   test('content types follow the file extension', () {
