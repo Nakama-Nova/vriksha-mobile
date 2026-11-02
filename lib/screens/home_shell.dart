@@ -9,6 +9,7 @@ import '../notices.dart';
 import '../session.dart';
 import '../shop_status.dart';
 import '../theme.dart';
+import 'about_screen.dart';
 import 'notices_screen.dart';
 import 'staff_screen.dart' show changeMyPassword;
 
@@ -156,11 +157,24 @@ class _HomeShellState extends State<HomeShell> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _sideHover))),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Vriksha Studio', style: serif(26, color: surfaceWarm)),
-                const SizedBox(height: 2),
-                Text('Staff desk · ${widget.session.username}',
-                    style: const TextStyle(fontSize: 12, color: _sideText)),
+              child: Row(children: [
+                // the brown-and-gold mark needs a light ground on the dark sidebar
+                Container(
+                  width: 52,
+                  height: 52,
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(color: surfaceWarm, borderRadius: BorderRadius.circular(12)),
+                  child: Image.asset('assets/brand/logo-vs.png', semanticLabel: 'Vriksha Studio'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Vriksha Studio', style: serif(26, color: surfaceWarm)),
+                    const SizedBox(height: 2),
+                    Text('Staff desk · ${widget.session.username}',
+                        style: const TextStyle(fontSize: 12, color: _sideText)),
+                  ]),
+                ),
               ]),
             ),
             const SizedBox(height: 12),
@@ -186,6 +200,10 @@ class _HomeShellState extends State<HomeShell> {
             _footerButton('🔑  My password', () {
               Navigator.pop(context);
               changeMyPassword(context);
+            }),
+            _footerButton('🌳  About Vriksha Studio', () {
+              Navigator.pop(context);
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen()));
             }),
             _footerButton('📄  Licences  ·  v1', () {
               Navigator.pop(context);

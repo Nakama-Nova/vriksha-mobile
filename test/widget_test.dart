@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vriksha_capture/screens/about_screen.dart';
 import 'package:vriksha_capture/screens/login_screen.dart';
 import 'package:vriksha_capture/screens/scans_screen.dart';
 import 'package:vriksha_capture/theme.dart';
@@ -18,12 +19,18 @@ void main() {
   });
 
   designTests();
+
+  testWidgets('About shows the logo and the 1983 souvenir', (tester) async {
+    await tester.pumpWidget(MaterialApp(theme: brandTheme(), home: const AboutScreen()));
+    expect(find.image(const AssetImage('assets/brand/logo.png')), findsOneWidget);
+    expect(find.image(const AssetImage('assets/brand/souvenir-1983.png')), findsOneWidget);
+  });
 }
 
 void designTests() {
-  testWidgets('login follows the design: logomark name, Show toggle, brown sign-in', (tester) async {
+  testWidgets('login shows the studio logo, the Show toggle and a brown sign-in', (tester) async {
     await tester.pumpWidget(MaterialApp(theme: brandTheme(), home: LoginScreen(onSignedIn: (_) {})));
-    expect(find.text('Vriksha Studio'), findsOneWidget);
+    expect(find.image(const AssetImage('assets/brand/logo.png')), findsOneWidget);
     expect(find.text('Staff sign in'), findsOneWidget);
     expect(find.text('Show'), findsOneWidget);
     await tester.tap(find.text('Show'));
