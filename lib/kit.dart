@@ -201,7 +201,7 @@ class _LoaderState<T> extends State<Loader<T>> {
         });
       }
     } on ApiException catch (e) {
-      if (e.status == 401) return scope.onSignOut();
+      if (e.status == 401) return; // Session.expire() is already signing out, with its notice
       if (mounted) setState(() => _error = e.message);
     }
   }

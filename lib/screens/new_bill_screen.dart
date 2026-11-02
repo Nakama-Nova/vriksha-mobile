@@ -52,7 +52,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
       final items = await scope.session.api.allItems();
       if (mounted) setState(() => _items = items);
     } on ApiException catch (e) {
-      if (e.status == 401) return scope.onSignOut();
+      if (e.status == 401) return; // Session.expire() is already signing out, with its notice
       if (mounted) setState(() => _loadError = e.message);
     }
   }
