@@ -4,8 +4,9 @@ import 'theme.dart';
 
 /// The brown bar with a serif title (and optional sub-line / "← Back") from the design.
 class BrandAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const BrandAppBar({super.key, required this.title, this.subtitle, this.back = false});
+  const BrandAppBar({super.key, required this.title, this.subtitle, this.back = false, this.onMenu});
   final String title;
+  final VoidCallback? onMenu;
   final String? subtitle;
   final bool back;
 
@@ -29,7 +30,17 @@ class BrandAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Text('←  Back', style: TextStyle(fontSize: 13, color: lineColor)),
                 ),
               ),
-            Text(title, style: serif(26, color: surfaceWarm)),
+            Row(children: [
+              if (onMenu != null)
+                InkWell(
+                  onTap: onMenu,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Icon(Icons.menu, color: surfaceWarm),
+                  ),
+                ),
+              Expanded(child: Text(title, style: serif(26, color: surfaceWarm))),
+            ]),
             if (subtitle != null)
               Text(subtitle!, style: const TextStyle(fontSize: 13, color: lineColor)),
           ],

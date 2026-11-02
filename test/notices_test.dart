@@ -259,17 +259,19 @@ void main() {
       s.dispose();
     });
 
-    testWidgets('the Alerts tab shows a count, lists the notices and opens on tap', (tester) async {
+    testWidgets('the Alerts entry shows a count, lists the notices and opens on tap', (tester) async {
       final s = status();
       await s.refresh();
       await tester.pumpWidget(MaterialApp(
         theme: brandTheme(),
         home: HomeShell(session: Session('https://shop.test', 't', 'asha', 'owner'), onSignOut: () {}, status: s),
       ));
-      expect(find.text('Alerts'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.menu)); // Alerts is an entry in the sidebar
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Alerts'), findsOneWidget);
       expect(find.text('1'), findsOneWidget); // the badge
-      await tester.tap(find.text('Alerts'));
-      await tester.pump();
+      await tester.tap(find.textContaining('Alerts'));
+      await tester.pumpAndSettle();
       expect(s.unread, 0);
       expect(find.text('New website order ORD-1'), findsOneWidget);
       expect(find.text('Notify me on this phone'), findsOneWidget);

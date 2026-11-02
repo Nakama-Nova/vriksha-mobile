@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../config.dart';
 import '../session.dart';
 import '../theme.dart';
 
@@ -15,27 +16,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _server = TextEditingController();
   final _user = TextEditingController();
   final _pass = TextEditingController();
   late String? _error = widget.notice;
   bool _busy = false;
   bool _show = false;
 
-  @override
-  void initState() {
-    super.initState();
-    SessionStore.lastServer().then((v) {
-      if (mounted && _server.text.isEmpty && v != null) _server.text = v;
-    });
-  }
-
   Future<void> _signIn() async {
-    final url = _server.text.trim();
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      setState(() => _error = 'The server address must start with http:// or https://');
-      return;
-    }
     if (_user.text.trim().isEmpty || _pass.text.isEmpty) {
       setState(() => _error = 'Enter your username and password');
       return;
@@ -45,11 +32,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final login = await ApiClient(url).login(_user.text.trim(), _pass.text);
-      final session = await SessionStore.save(url, login);
+      final login = await ApiClient(apiBaseUrl).login(_user.text.trim(), _pass.text);
+      final session = await SessionStore.save(login);
       widget.onSignedIn(session);
     } on ApiException catch (e) {
       setState(() => _error = e.status == 401 ? 'Wrong username or password' : e.message);
+    } catch (e) {
+      // Signed in, but the phone could not keep the login (e.g. secure storage).
+      setState(() => _error = 'Could not finish signing in: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -72,16 +62,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text('Vriksha Studio', style: serif(34, color: brandBrown)),
                 const Text('Staff sign in', style: TextStyle(color: textMuted)),
                 const SizedBox(height: 24),
-                TextField(
-                  controller: _server,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Server address',
-                    hintText: 'https://shop.example.com',
-                  ),
-                ),
-                const SizedBox(height: 12),
                 TextField(
                   controller: _user,
                   autocorrect: false,
@@ -118,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text('Vriksha Capture · v1', style: TextStyle(fontSize: 12, color: textMuted)),
+                const Text('Staff desk · v1', style: TextStyle(fontSize: 12, color: textMuted)),
               ]),
             ),
           ),

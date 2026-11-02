@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'config.dart';
 
 /// Who is signed in, and to which server.
 class Session {
@@ -25,6 +26,23 @@ class Session {
 
   /// Owner and manager see every scan and can pick the product.
   bool get isStaffLead => role == 'owner' || role == 'manager';
+  bool get isOwner => role == 'owner';
+
+  /// Who may sell (New Bill, Buyers), as on the desktop.
+  bool get canSell => isStaffLead || role == 'sales';
+
+  /// The desktop's sidebar rules: which screens this role is shown.
+  bool allows(String module) => switch (role) {
+        'owner' => true,
+        'manager' => module != 'staff',
+        'sales' => !const {
+            'reports', 'lab', 'materials', 'purchases', 'staff', 'wages', 'expenses', 'profit'
+          }.contains(module),
+        'achari' || 'worker' || 'artisan' =>
+          const {'home', 'stock', 'workforce', 'wages', 'lab'}.contains(module),
+        _ => module == 'home',
+      };
+
 
   /// Temple restorations are for the owner and artisans only.
   bool get canRestore => role == 'owner' || role == 'artisan';
@@ -37,23 +55,17 @@ class SessionStore {
   static Future<Session?> load() async {
     final prefs = await SharedPreferences.getInstance();
     final token = await _secure.read(key: 'token');
-    final url = prefs.getString('baseUrl');
-    if (token == null || url == null) return null;
-    return Session(url, token, prefs.getString('username') ?? '',
+    if (token == null) return null;
+    return Session(apiBaseUrl, token, prefs.getString('username') ?? '',
         prefs.getString('role') ?? '');
   }
 
-  static Future<String?> lastServer() async =>
-      (await SharedPreferences.getInstance()).getString('baseUrl');
-
-  static Future<Session> save(String baseUrl, LoginResult login) async {
+  static Future<Session> save(LoginResult login) async {
     final prefs = await SharedPreferences.getInstance();
-    final url = baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
-    await prefs.setString('baseUrl', url);
     await prefs.setString('username', login.username);
     await prefs.setString('role', login.role);
     await _secure.write(key: 'token', value: login.token);
-    return Session(url, login.token, login.username, login.role);
+    return Session(apiBaseUrl, login.token, login.username, login.role);
   }
 
   static Future<void> clear() async {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api.dart';
+import '../kit.dart' show AppScope;
 import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -163,6 +164,7 @@ class _ScansScreenState extends State<ScansScreen> {
       appBar: BrandAppBar(
         title: widget.session.isStaffLead ? 'All scans' : 'My scans',
         subtitle: waiting > 0 ? '$waiting waiting for the workshop PC' : null,
+        onMenu: AppScope.of(context).menu,
       ),
       body: RefreshIndicator(
         onRefresh: _load,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../kit.dart';
 import '../notices.dart';
 import '../shop_status.dart';
 import '../theme.dart';
@@ -40,7 +41,7 @@ class NoticesScreen extends StatelessWidget {
           final update = status.update;
           return Scaffold(
             backgroundColor: Colors.white,
-            appBar: const BrandAppBar(title: 'Alerts'),
+            appBar: BrandAppBar(title: 'Alerts', onMenu: context.dependOnInheritedWidgetOfExactType<AppScope>()?.menu),
             body: ListView(padding: const EdgeInsets.all(20), children: [
               if (update != null) ...[
                 WarmCard(
