@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:workmanager/workmanager.dart';
 
 import 'alerts.dart';
@@ -30,9 +32,12 @@ Future<void> checkInBackground({
   Future<void> Function(String version)? announceUpdate,
   ApiClient Function(Session)? apiFor,
   Future<String> Function()? installedVersion,
+  Future<void> Function()? clearSession,
 }) async {
   final session = await (loadSession ?? SessionStore.load)();
   if (session == null) return; // signed out
+  // The server refused the token: forget it, so later rounds stop and the app asks to sign in.
+  session.onExpired = () => unawaited((clearSession ?? SessionStore.clear)());
   final alerts = alerter ?? SystemAlerts.instance;
   final api = (apiFor ?? (s) => s.api)(session);
   await NoticePoller(api, session.username, alerts).poll();

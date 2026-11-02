@@ -12,7 +12,17 @@ class Session {
   final String username;
   final String role;
 
-  ApiClient get api => ApiClient(baseUrl, token: token);
+  /// Set by whoever owns the sign-in state; runs once when the server refuses the token.
+  void Function()? onExpired;
+  bool _expired = false;
+
+  void expire() {
+    if (_expired) return; // a poll, a list and an upload can all fail together
+    _expired = true;
+    onExpired?.call();
+  }
+
+  ApiClient get api => ApiClient(baseUrl, token: token, onUnauthorized: expire);
 
   /// Owner and manager see every scan and can pick the product.
   bool get isStaffLead => role == 'owner' || role == 'manager';

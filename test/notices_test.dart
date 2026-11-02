@@ -178,6 +178,25 @@ void main() {
       expect(announced, ['9.9.9']);
     });
 
+    test('a refused token is forgotten, so later rounds stop', () async {
+      var cleared = 0;
+      final s = Session('https://shop.test', 't', 'asha', 'owner');
+      final client = ApiClient('https://shop.test',
+          token: 't',
+          onUnauthorized: s.expire,
+          client: MockClient((_) async => http.Response('{"detail":"expired"}', 401)));
+      await expectLater(
+        checkInBackground(
+          alerter: FakeAlerter(),
+          loadSession: () async => s,
+          apiFor: (_) => client,
+          clearSession: () async => cleared++,
+        ),
+        throwsA(isA<ApiException>()),
+      );
+      expect(cleared, 1);
+    });
+
     test('an unreachable server ends the round quietly', () async {
       expect(
         checkInBackground(

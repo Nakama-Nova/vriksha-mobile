@@ -151,12 +151,15 @@ bool isInsecureRemote(String url) {
 }
 
 class ApiClient {
-  ApiClient(String baseUrl, {this.token, http.Client? client})
+  ApiClient(String baseUrl, {this.token, this.onUnauthorized, http.Client? client})
       : baseUrl = baseUrl.trim().replaceAll(RegExp(r'/+$'), ''),
         _http = client ?? http.Client();
 
   final String baseUrl;
   final String? token;
+  /// Called when the server refuses our token (expired or switched off), from any call.
+  /// Not called for a login, which has no token.
+  final void Function()? onUnauthorized;
   final http.Client _http;
 
   static const _timeout = Duration(seconds: 30);
@@ -174,6 +177,7 @@ class ApiClient {
     if (r.statusCode >= 200 && r.statusCode < 300) {
       return r.body.isEmpty ? null : jsonDecode(utf8.decode(r.bodyBytes));
     }
+    if (r.statusCode == 401 && token != null) onUnauthorized?.call();
     throw ApiException(r.statusCode, _detail(r));
   }
 

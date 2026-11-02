@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,14 +47,24 @@ class _Gate extends StatefulWidget {
 class _GateState extends State<_Gate> {
   late Future<Session?> _session = SessionStore.load();
 
-  void _signedIn(Session s) => setState(() => _session = Future.value(s));
+  String? _notice; // why the person was signed out, shown on the login screen
 
-  Future<void> _signOut() async {
+  void _signedIn(Session s) => setState(() {
+        _notice = null;
+        _session = Future.value(s);
+      });
+
+  Future<void> _signOut({String? notice}) async {
     try {
       await stopBackgroundChecks(); // nothing is fetched for nobody
     } catch (_) {}
     await SessionStore.clear();
-    setState(() => _session = Future.value(null));
+    if (!mounted) return;
+    Navigator.of(context).popUntil((r) => r.isFirst); // e.g. the New scan screen
+    setState(() {
+      _notice = notice;
+      _session = Future.value(null);
+    });
   }
 
   @override
@@ -63,8 +75,10 @@ class _GateState extends State<_Gate> {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           final s = snap.data;
+          // Any call refused with 401 (list, poll, upload) lands here, once.
+          s?.onExpired ??= () => unawaited(_signOut(notice: 'Your session ended. Please sign in again.'));
           return s == null
-              ? LoginScreen(onSignedIn: _signedIn)
+              ? LoginScreen(onSignedIn: _signedIn, notice: _notice)
               : HomeShell(session: s, onSignOut: _signOut);
         },
       );

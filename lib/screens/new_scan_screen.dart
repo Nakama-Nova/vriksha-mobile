@@ -100,7 +100,8 @@ class _NewScanScreenState extends State<NewScanScreen> {
       _error = null;
       _progress = 0;
     });
-    final uploader = ScanUploader(widget.session.api);
+    final uploader = ScanUploader(widget.session.api,
+        store: PendingStore(widget.session.baseUrl, widget.session.username));
     void onProgress(double f) => mounted ? setState(() => _progress = f) : null;
     try {
       if (_unfinishedScan != null) {
