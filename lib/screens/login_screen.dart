@@ -53,13 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(color: brandGold, shape: BoxShape.circle),
-                ),
-                const SizedBox(height: 14),
-                Text('Vriksha Studio', style: serif(34, color: brandBrown)),
+                Image.asset('assets/brand/logo.png', height: 150, semanticLabel: 'Vriksha Studio'),
+                const SizedBox(height: 10),
                 const Text('Staff sign in', style: TextStyle(color: textMuted)),
                 const SizedBox(height: 24),
                 TextField(

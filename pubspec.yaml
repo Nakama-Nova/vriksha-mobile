@@ -66,6 +66,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/brand/
     - assets/fonts/OFL-CormorantGaramond.txt
     - assets/fonts/OFL-Inter.txt
 
