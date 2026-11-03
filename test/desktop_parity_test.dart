@@ -4,6 +4,10 @@ import 'package:vriksha_capture/kit.dart';
 import 'package:vriksha_capture/config.dart';
 import 'package:vriksha_capture/modules.dart';
 import 'package:vriksha_capture/screens/budgets_screen.dart';
+import 'package:vriksha_capture/screens/designs_screen.dart';
+import 'package:vriksha_capture/screens/letters_screen.dart';
+import 'package:vriksha_capture/screens/machines_screen.dart';
+import 'package:vriksha_capture/screens/restoration_screen.dart';
 import 'package:vriksha_capture/screens/orders_screen.dart';
 import 'package:vriksha_capture/screens/places_screen.dart';
 import 'package:vriksha_capture/screens/home_shell.dart';
@@ -17,10 +21,10 @@ void main() {
     final ids = modules.map((m) => m.id).toList();
     Set<String> seen(String role) => {for (final id in ids) if (as_(role).allows(id)) id};
     expect(seen('owner'), ids.toSet());
-    expect(seen('manager'), ids.toSet()..remove('staff'));
+    expect(seen('manager'), ids.toSet()..removeAll({'staff', 'restoration', 'designs'}));
     expect(seen('sales').intersection({'reports', 'lab', 'materials', 'purchases', 'staff', 'wages', 'expenses', 'profit'}), isEmpty);
     expect(seen('sales'), containsAll(['bill', 'buyers', 'history', 'workforce']));
-    expect(seen('achari'), {'home', 'stock', 'workforce', 'lab', 'wages'});
+    expect(seen('achari'), {'home', 'stock', 'workforce', 'lab', 'wages', 'machines'});
     expect(seen('worker'), {'home', 'stock', 'workforce', 'lab', 'wages'});
     expect(as_('worker').canSell, isFalse);
   });
@@ -31,9 +35,9 @@ void main() {
       (bySection[m.section] ??= []).add(m.label);
     }
     expect(bySection[null], ['Home']);
-    expect(bySection['Selling'], ['New Bill', 'Bill History', 'Orders', 'Buyers']);
+    expect(bySection['Selling'], ['New Bill', 'Bill History', 'Orders', 'Buyers', 'Letters']);
     expect(bySection['Stock and buying'], ['Stock', 'Materials', 'Purchases', 'Places']);
-    expect(bySection['Workshop'], ['3D Lab']);
+    expect(bySection['Workshop'], ['3D Lab', 'Restoration', 'Designs', 'Machines and tools']);
     expect(bySection['People and pay'], ['Attendance', 'Wages', 'Staff']);
     expect(bySection['Money'], ['Expenses', 'Profit', 'Budgets', 'Reports']);
   });
@@ -51,6 +55,62 @@ void main() {
     expect(as_('achari').allows('machines'), isTrue);
     expect(as_('worker').allows('machines'), isFalse);
     expect(as_('sales').allows('machines'), isFalse);
+  });
+
+  test('the workshop screens follow the desktop role rules', () {
+    for (final r in ['owner', 'artisan']) {
+      expect(as_(r).allows('restoration'), isTrue, reason: r);
+      expect(as_(r).allows('designs'), isTrue, reason: r);
+    }
+    for (final r in ['manager', 'sales', 'achari', 'worker']) {
+      expect(as_(r).allows('restoration'), isFalse, reason: r);
+      expect(as_(r).allows('designs'), isFalse, reason: r);
+    }
+    for (final r in ['owner', 'manager', 'achari']) {
+      expect(as_(r).allows('machines'), isTrue, reason: r);
+    }
+    for (final r in ['sales', 'artisan', 'worker']) {
+      expect(as_(r).allows('machines'), isFalse, reason: r);
+    }
+    for (final r in ['owner', 'manager', 'sales']) {
+      expect(as_(r).allows('letters'), isTrue, reason: r);
+    }
+    for (final r in ['achari', 'artisan', 'worker']) {
+      expect(as_(r).allows('letters'), isFalse, reason: r);
+    }
+  });
+
+  test('letters: who may issue which kind', () {
+    expect(mayIssue(as_('sales'), 'quotation'), isTrue);
+    expect(mayIssue(as_('sales'), 'order_confirmation'), isTrue);
+    expect(mayIssue(as_('sales'), 'purchase_receipt'), isFalse);
+    expect(mayIssue(as_('manager'), 'purchase_receipt'), isTrue);
+    expect(mayIssue(as_('manager'), 'completion_certificate'), isFalse);
+    expect(mayIssue(as_('owner'), 'completion_certificate'), isTrue);
+  });
+
+  test('machines: a service is due soon within two weeks, overdue when the server says so', () {
+    final today = DateTime(2026, 3, 1);
+    expect(dueState({'status': 'active', 'service_due_on': '2026-03-10'}, today), 'soon');
+    expect(dueState({'status': 'active', 'service_due_on': '2026-03-15'}, today), 'soon'); // 14 days
+    expect(dueState({'status': 'active', 'service_due_on': '2026-03-16'}, today), '');
+    expect(dueState({'status': 'active', 'service_due_on': '2026-02-01'}, today), 'soon'); // past, server flag decides overdue
+    expect(dueState({'status': 'active', 'service_overdue': true}, today), 'overdue');
+    expect(dueState({'status': 'retired', 'service_overdue': true}, today), '');
+    expect(dueState({'status': 'active'}, today), '');
+  });
+
+  test('restoration and designs: stage words and file sizes', () {
+    expect(stageWord('review'), 'Ready to review');
+    expect(stageWord('restored', 'finishing'), 'Ready to sell');
+    expect(stageWord('planned', 'finishing'), 'Bought');
+    expect(stageWord('planned', 'temple'), 'Planned');
+    expect(stagesFor('finishing').map((s) => s.$2), ['planned', 'finishing', 'painting', 'restored', 'on_hold', 'cancelled']);
+    expect(stagesFor('temple').map((s) => s.$2), ['planned', 'capturing', 'processing', 'review', 'carving', 'restored', 'on_hold', 'cancelled']);
+    expect(fileSize(512 * 1024), '512 KB');
+    expect(fileSize(3.5 * 1024 * 1024), '3.5 MB');
+    expect(fileSize(1.5 * 1024 * 1024 * 1024), '1.5 GB');
+    expect(designStatusWord('ready'), 'Ready');
   });
 
   test('orders: sellers see them, the workshop roles do not', () {

@@ -355,7 +355,8 @@ Future<void> actionSheet(BuildContext c, String title, List<(String, VoidCallbac
 
 // ---- forms ----------------------------------------------------------------
 
-enum K { text, multiline, password, money, number, date, choice, flag }
+/// [optDate] is a date that may be left empty ("Not set"); [date] starts at today.
+enum K { text, multiline, password, money, number, date, optDate, choice, flag }
 
 /// One form field. [choices] are (label, value) pairs for K.choice.
 class F {
@@ -401,6 +402,7 @@ class _FormSheetState extends State<_FormSheet> {
     for (final f in widget.fields) {
       switch (f.kind) {
         case K.date:
+        case K.optDate:
         case K.choice:
         case K.flag:
           _value[f.key] = f.initial ?? (f.kind == K.flag ? false : (f.kind == K.date ? isoDate(DateTime.now()) : null));
@@ -425,7 +427,7 @@ class _FormSheetState extends State<_FormSheet> {
     for (final f in widget.fields) {
       Object? v;
       switch (f.kind) {
-        case K.date || K.choice || K.flag:
+        case K.date || K.optDate || K.choice || K.flag:
           v = _value[f.key];
         case K.money:
           v = double.tryParse(_text[f.key]!.text.trim());
@@ -460,6 +462,31 @@ class _FormSheetState extends State<_FormSheet> {
           child: InputDecorator(
             decoration: InputDecoration(labelText: f.label, suffixIcon: const Icon(Icons.calendar_today, size: 18)),
             child: Text(niceDate(d)),
+          ),
+        );
+      case K.optDate:
+        final set = DateTime.tryParse('${_value[f.key]}');
+        return InkWell(
+          onTap: () async {
+            final p = await showDatePicker(
+                context: context,
+                initialDate: set ?? DateTime.now(),
+                firstDate: DateTime(1990),
+                lastDate: DateTime(2100));
+            if (p != null) setState(() => _value[f.key] = isoDate(p));
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: f.label,
+              suffixIcon: set == null
+                  ? const Icon(Icons.calendar_today, size: 18)
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      tooltip: 'Clear the date',
+                      onPressed: () => setState(() => _value[f.key] = null),
+                    ),
+            ),
+            child: Text(set == null ? 'Not set' : niceDate(set), style: TextStyle(color: set == null ? textMuted : null)),
           ),
         );
       case K.choice:
