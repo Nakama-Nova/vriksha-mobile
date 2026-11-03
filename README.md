@@ -8,7 +8,7 @@ This repository continues `furnibiz-android` (same git history, new name). The r
 
 ## What it does
 
-- **Same side menu as the desktop**, with its headings, order, names and role rules: Home; Selling (New Bill, Bill History, Orders, Buyers); Stock and buying (Stock, Materials, Purchases, Places); Workshop (3D Lab, scan capture below); People and pay (Attendance, Wages, Staff); Money (Expenses, Profit, Budgets, Reports); plus Alerts, About, My password and Sign Out. Not on the phone yet: Letters, Restoration, Designs, Machines and tools, offline billing, bill PDFs, product photos and website fields, the web 3D viewer.
+- **Same side menu as the desktop**, with its headings, order, names and role rules: Home; Selling (New Bill, Bill History, Orders, Buyers, Letters); Stock and buying (Stock, Materials, Purchases, Places); Workshop (3D Lab, scan capture below; Restoration; Designs; Machines and tools); People and pay (Attendance, Wages, Staff); Money (Expenses, Profit, Budgets, Reports); plus Alerts, About, My password and Sign Out. Not on the phone yet: offline billing, bill PDFs, product photos and website fields, the web 3D viewer.
 - Sign in with your shop username and password. The server address is fixed in the app (`lib/config.dart`, like the desktop's `API_BASE_URL`), so sign-in does not ask for it.
 - **New scan**: choose Photos (8 or more, walking around the piece) or one Video (up to 90 s), optionally the real width in mm and a product (owner/manager), then Upload.
 - **My scans** (owner/manager: **All scans**): status in plain words, progress while the workshop PC is working, the reason if it failed, Cancel while it is waiting.

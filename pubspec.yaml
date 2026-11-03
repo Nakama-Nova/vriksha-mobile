@@ -42,6 +42,7 @@ dependencies:
   workmanager: ^0.10.10
   package_info_plus: ^10.2.2
   url_launcher: ^6.3.3
+  printing: ^5.14.2   # share or print a letter's PDF
 
 dev_dependencies:
   flutter_test:

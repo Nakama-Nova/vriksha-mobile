@@ -6,6 +6,7 @@ import '../api.dart';
 import '../kit.dart';
 import '../theme.dart';
 import 'expenses_screen.dart' show payMethods, methodWord;
+import 'letters_screen.dart' show issueLetter;
 
 // The stages, the one forward step from each and who may do what are the desktop's
 // (ui/orders_screen.py and services/orders_service.py); the server enforces the rules.
@@ -254,7 +255,7 @@ class _OrderPageState extends State<OrderPage> {
     final v = await showForm(context, 'Edit ${o['order_number']}', [
       F('estimated_amount', 'Estimate', kind: K.money, initial: o['estimated_amount']),
       F('final_amount', 'Final amount', kind: K.money, initial: o['final_amount'], hint: 'The agreed price once finished; empty = use the estimate'),
-      F('expected_delivery', 'Promised delivery date', kind: K.date, initial: o['expected_delivery']),
+      F('expected_delivery', 'Promised delivery date', kind: K.optDate, initial: o['expected_delivery']),
       F('notes', 'Notes', kind: K.multiline, initial: o['notes']),
     ]);
     if (v == null || !mounted) return;
@@ -361,6 +362,8 @@ class _OrderPageState extends State<OrderPage> {
               onPressed: _due <= 0 && amountOf(o) > 0 ? null : _pay, // nothing left to collect
               child: const Text('Record payment'),
             ),
+          if (status != 'cancelled')
+            OutlinedButton(onPressed: () => issueLetter(context, 'order_confirmation', order: _o), child: const Text('Confirmation letter')),
           if (billed != null || _billable.contains(status))
             OutlinedButton(onPressed: _bill, child: Text(billed != null ? 'Open bill' : 'Create bill')),
           if (isOpen && _manage && billed == null) OutlinedButton(onPressed: _edit, child: const Text('Edit')),

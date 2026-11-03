@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -378,6 +379,13 @@ class ApiClient {
           _ => _http.delete(u, headers: _headers),
         };
       }));
+
+  /// A file the server answers with as raw bytes (a letter's PDF).
+  Future<Uint8List> getBytes(String path) async {
+    final r = await _send(() => _http.get(_uri(path), headers: {if (token != null) 'Authorization': 'Bearer $token'}));
+    _decode(r.statusCode >= 200 && r.statusCode < 300 ? http.Response('', 200) : r); // an error is thrown as usual
+    return r.bodyBytes;
+  }
 
   Future<dynamic> postJson(String path, [Object? body, Map<String, String>? query]) =>
       _body('POST', path, body, query);
