@@ -99,7 +99,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
       F('maintenance_every_days', 'Service every (days)', kind: K.number, initial: m?['maintenance_every_days'], hint: 'empty = no schedule'),
       F('notes', 'Notes', initial: m?['notes']),
       if (canSetStatus)
-        F('status', 'Status', kind: K.choice, initial: m!['status'] == 'retired' ? 'retired' : 'active', choices: const [
+        F('status', 'Status', kind: K.choice, initial: m['status'] == 'retired' ? 'retired' : 'active', choices: const [
           ('Working', 'active'),
           ('Retired (no longer used)', 'retired'),
         ]),
@@ -122,7 +122,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
       if (canSetStatus) 'status': v['status'],
     };
     final api = _api;
-    if (await guard(context, () async => editing ? api.putJson('/machines/${m!['id']}', body) : api.postJson('/machines/', body),
+    if (await guard(context, () async => editing ? api.putJson('/machines/${m['id']}', body) : api.postJson('/machines/', body),
         done: 'Saved')) {
       _refresh();
     }
@@ -225,7 +225,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
       F('purchase_cost', 'Bought for', kind: K.money, initial: t?['purchase_cost']),
       F('notes', 'Notes', initial: t?['notes']),
       if (canSetStatus)
-        F('status', 'Status', kind: K.choice, initial: t!['status'], choices: const [
+        F('status', 'Status', kind: K.choice, initial: t['status'], choices: const [
           ('Available', 'available'),
           ('Retired (no longer used)', 'retired'),
         ]),
@@ -243,7 +243,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
       if (canSetStatus) 'status': v['status'],
     };
     final api = _api;
-    if (await guard(context, () async => editing ? api.putJson('/tools/${t!['id']}', body) : api.postJson('/tools/', body),
+    if (await guard(context, () async => editing ? api.putJson('/tools/${t['id']}', body) : api.postJson('/tools/', body),
         done: 'Saved')) {
       _refresh();
     }
