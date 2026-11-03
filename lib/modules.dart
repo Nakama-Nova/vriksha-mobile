@@ -9,6 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/materials_screen.dart';
 import 'screens/new_bill_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/places_screen.dart';
 import 'screens/profit_screen.dart';
 import 'screens/purchases_screen.dart';
 import 'screens/reports_screen.dart';
@@ -29,7 +30,7 @@ class Module {
 }
 
 /// Same order, headings and names as the desktop's side panel (NAV_ITEMS and NAV_SECTIONS in
-/// its main_window.py). Not on the phone yet: Letters, Places, Restoration, Designs,
+/// its main_window.py). Not on the phone yet: Letters, Restoration, Designs,
 /// Machines and tools.
 final modules = <Module>[
   Module('home', 'Home', '🏠', (_) => const HomeScreen()),
@@ -40,6 +41,7 @@ final modules = <Module>[
   Module('stock', 'Stock', '📦', (_) => const StockScreen(), section: 'Stock and buying'),
   Module('materials', 'Materials', '🌳', (_) => const MaterialsScreen(), section: 'Stock and buying'),
   Module('purchases', 'Purchases', '🛒', (_) => const PurchasesScreen(), section: 'Stock and buying'),
+  Module('places', 'Places', '📍', (_) => const PlacesScreen(), section: 'Stock and buying'),
   // The desktop's 3D Lab opens a web viewer; the phone's part of it is capturing scans.
   Module('lab', '3D Lab', '🧊', (c) {
     final s = AppScope.of(c);
