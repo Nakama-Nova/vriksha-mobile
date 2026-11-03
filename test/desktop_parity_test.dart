@@ -5,6 +5,7 @@ import 'package:vriksha_capture/config.dart';
 import 'package:vriksha_capture/modules.dart';
 import 'package:vriksha_capture/screens/budgets_screen.dart';
 import 'package:vriksha_capture/screens/orders_screen.dart';
+import 'package:vriksha_capture/screens/places_screen.dart';
 import 'package:vriksha_capture/screens/home_shell.dart';
 import 'package:vriksha_capture/session.dart';
 import 'package:vriksha_capture/theme.dart';
@@ -31,7 +32,7 @@ void main() {
     }
     expect(bySection[null], ['Home']);
     expect(bySection['Selling'], ['New Bill', 'Bill History', 'Orders', 'Buyers']);
-    expect(bySection['Stock and buying'], ['Stock', 'Materials', 'Purchases']);
+    expect(bySection['Stock and buying'], ['Stock', 'Materials', 'Purchases', 'Places']);
     expect(bySection['Workshop'], ['3D Lab']);
     expect(bySection['People and pay'], ['Attendance', 'Wages', 'Staff']);
     expect(bySection['Money'], ['Expenses', 'Profit', 'Budgets', 'Reports']);
@@ -59,6 +60,30 @@ void main() {
     for (final r in ['achari', 'artisan', 'worker']) {
       expect(as_(r).allows('orders'), isFalse, reason: r);
     }
+  });
+
+  test('places: owner, manager and sales look; the workshop roles do not', () {
+    for (final r in ['owner', 'manager', 'sales']) {
+      expect(as_(r).allows('places'), isTrue, reason: r);
+    }
+    for (final r in ['achari', 'artisan', 'worker']) {
+      expect(as_(r).allows('places'), isFalse, reason: r);
+    }
+  });
+
+  test('places: quantities, names and what a stock row is about', () {
+    expect(qtyText('2'), '2');
+    expect(qtyText(2.5), '2.5');
+    expect(qtyText('10.00'), '10');
+    expect(qtyText('100'), '100');
+    expect(qtyText(0), '0');
+    expect(qtyText('0.25'), '0.25');
+    final places = [{'id': 'a', 'name': 'Carving unit'}, {'id': 'b', 'name': 'Shop'}];
+    expect(placeName(places, null), 'Not placed yet');
+    expect(placeName(places, 'b'), 'Shop');
+    expect(placeName(places, 'zzz'), 'Unknown place');
+    expect(thingKey({'item_id': 'i1', 'raw_material_id': null}), ('item', 'i1'));
+    expect(thingKey({'item_id': null, 'raw_material_id': 'm1'}), ('material', 'm1'));
   });
 
   test('order figures follow the desktop', () {
