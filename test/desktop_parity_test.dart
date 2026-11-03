@@ -160,6 +160,11 @@ void main() {
 
   testWidgets('the sidebar lists the desktop screens for the role and switches screens', (tester) async {
     var out = 0;
+    // The menu list scrolls and only builds what is on screen; with the section headings it
+    // is longer than the default 800x600 test window, so use a tall one.
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(
       theme: brandTheme(),
       home: HomeShell(session: as_('sales'), onSignOut: () => out++),
