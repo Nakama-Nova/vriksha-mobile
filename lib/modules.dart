@@ -8,6 +8,7 @@ import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/materials_screen.dart';
 import 'screens/new_bill_screen.dart';
+import 'screens/orders_screen.dart';
 import 'screens/profit_screen.dart';
 import 'screens/purchases_screen.dart';
 import 'screens/reports_screen.dart';
@@ -28,12 +29,13 @@ class Module {
 }
 
 /// Same order, headings and names as the desktop's side panel (NAV_ITEMS and NAV_SECTIONS in
-/// its main_window.py). Not on the phone yet: Orders, Letters, Places, Restoration, Designs,
+/// its main_window.py). Not on the phone yet: Letters, Places, Restoration, Designs,
 /// Machines and tools.
 final modules = <Module>[
   Module('home', 'Home', '🏠', (_) => const HomeScreen()),
   Module('bill', 'New Bill', '🧾', (_) => const NewBillScreen(), section: 'Selling'),
   Module('history', 'Bill History', '📜', (_) => const HistoryScreen(), section: 'Selling'),
+  Module('orders', 'Orders', '📋', (_) => const OrdersScreen(), section: 'Selling'),
   Module('buyers', 'Buyers', '👤', (_) => const BuyersScreen(), section: 'Selling'),
   Module('stock', 'Stock', '📦', (_) => const StockScreen(), section: 'Stock and buying'),
   Module('materials', 'Materials', '🌳', (_) => const MaterialsScreen(), section: 'Stock and buying'),

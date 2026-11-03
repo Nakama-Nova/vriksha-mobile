@@ -84,6 +84,7 @@ class _HomeShellState extends State<HomeShell> {
   /// The screen a notice is about (null: just the Alerts list).
   String? _screenFor(String? what) => switch (what) {
         'restoration' => 'lab',
+        'orders' => 'orders', // a new website order
         'stock' => 'stock',
         _ => null,
       };

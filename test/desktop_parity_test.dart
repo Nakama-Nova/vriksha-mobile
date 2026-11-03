@@ -4,6 +4,7 @@ import 'package:vriksha_capture/kit.dart';
 import 'package:vriksha_capture/config.dart';
 import 'package:vriksha_capture/modules.dart';
 import 'package:vriksha_capture/screens/budgets_screen.dart';
+import 'package:vriksha_capture/screens/orders_screen.dart';
 import 'package:vriksha_capture/screens/home_shell.dart';
 import 'package:vriksha_capture/session.dart';
 import 'package:vriksha_capture/theme.dart';
@@ -29,7 +30,7 @@ void main() {
       (bySection[m.section] ??= []).add(m.label);
     }
     expect(bySection[null], ['Home']);
-    expect(bySection['Selling'], ['New Bill', 'Bill History', 'Buyers']);
+    expect(bySection['Selling'], ['New Bill', 'Bill History', 'Orders', 'Buyers']);
     expect(bySection['Stock and buying'], ['Stock', 'Materials', 'Purchases']);
     expect(bySection['Workshop'], ['3D Lab']);
     expect(bySection['People and pay'], ['Attendance', 'Wages', 'Staff']);
@@ -49,6 +50,38 @@ void main() {
     expect(as_('achari').allows('machines'), isTrue);
     expect(as_('worker').allows('machines'), isFalse);
     expect(as_('sales').allows('machines'), isFalse);
+  });
+
+  test('orders: sellers see them, the workshop roles do not', () {
+    for (final r in ['owner', 'manager', 'sales']) {
+      expect(as_(r).allows('orders'), isTrue, reason: r);
+    }
+    for (final r in ['achari', 'artisan', 'worker']) {
+      expect(as_(r).allows('orders'), isFalse, reason: r);
+    }
+  });
+
+  test('order figures follow the desktop', () {
+    // the final amount once set, else the estimate
+    expect(amountOf({'estimated_amount': '1000.00', 'final_amount': null}), 1000);
+    expect(amountOf({'estimated_amount': '1000.00', 'final_amount': '1200.00'}), 1200);
+    expect(amountOf({'estimated_amount': '1000.00', 'final_amount': '0'}), 1000);
+    expect(itemsSummary({'items': []}), '');
+    expect(itemsSummary({'items': [{'item_name': 'Door', 'quantity': 1}]}), 'Door');
+    expect(
+        itemsSummary({
+          'items': [
+            {'item_name': 'Pillar', 'quantity': 2},
+            {'item_name': 'Bracket', 'quantity': 1},
+          ]
+        }),
+        '2 × Pillar  +1 more');
+    expect(itemsSummary({'items': [{'item_name': null, 'quantity': 1}]}), 'Catalogue piece');
+    // a catalogue piece is priced with GST included
+    expect(priceWithGst({'selling_price': '1000', 'gst_percent': '18'}), 1180);
+    expect(priceWithGst({'selling_price': '99.99', 'gst_percent': '5'}), 104.99);
+    expect(statusWord('in_production'), 'In production');
+    expect(statusWord('draft'), 'New');
   });
 
   test('budget usage follows the desktop: amber from 80%, red when used up', () {
