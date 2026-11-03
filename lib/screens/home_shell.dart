@@ -84,6 +84,7 @@ class _HomeShellState extends State<HomeShell> {
   /// The screen a notice is about (null: just the Alerts list).
   String? _screenFor(String? what) => switch (what) {
         'restoration' => 'lab',
+        'orders' => 'orders', // a new website order
         'stock' => 'stock',
         _ => null,
       };
@@ -138,6 +139,12 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  Widget _sectionHeading(String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+        child: Text(text.toUpperCase(),
+            style: const TextStyle(fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w600, color: brandGold)),
+      );
+
   Widget _footerButton(String text, VoidCallback onTap, {Color color = _sideText}) => InkWell(
         onTap: onTap,
         child: Container(
@@ -180,7 +187,11 @@ class _HomeShellState extends State<HomeShell> {
             const SizedBox(height: 12),
             Expanded(
               child: ListView(padding: EdgeInsets.zero, children: [
-                for (final m in _allowed) _navButton(m.id, Text('${m.emoji}   ${m.label}')),
+                for (final (i, m) in _allowed.indexed) ...[
+                  // a heading above the first screen of each group, as on the desktop
+                  if (m.section != null && (i == 0 || _allowed[i - 1].section != m.section)) _sectionHeading(m.section!),
+                  _navButton(m.id, Text('${m.emoji}   ${m.label}')),
+                ],
               ]),
             ),
             // pinned under the list, so it is in reach however many screens the role has

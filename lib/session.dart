@@ -34,15 +34,17 @@ class Session {
   /// The desktop's sidebar rules: which screens this role is shown.
   bool allows(String module) => switch (role) {
         'owner' => true,
-        'manager' => module != 'staff',
+        'manager' => !const {'staff', 'restoration', 'designs'}.contains(module),
         'sales' => !const {
-            'reports', 'lab', 'materials', 'purchases', 'staff', 'wages', 'expenses', 'profit'
+            'reports', 'lab', 'materials', 'purchases', 'staff', 'wages', 'expenses', 'profit',
+            'restoration', 'designs', 'machines', 'budgets',
           }.contains(module),
-        'achari' || 'worker' || 'artisan' =>
-          const {'home', 'stock', 'workforce', 'wages', 'lab'}.contains(module),
+        'achari' => const {'home', 'stock', 'workforce', 'wages', 'lab', 'machines'}.contains(module),
+        'artisan' =>
+          const {'home', 'stock', 'workforce', 'wages', 'lab', 'restoration', 'designs'}.contains(module),
+        'worker' => const {'home', 'stock', 'workforce', 'wages', 'lab'}.contains(module),
         _ => module == 'home',
       };
-
 
   /// Temple restorations are for the owner and artisans only.
   bool get canRestore => role == 'owner' || role == 'artisan';
