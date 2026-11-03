@@ -120,19 +120,15 @@ Future<bool> confirm(BuildContext c, String title, String message, {String ok = 
     false;
 
 /// Run a server call; show the server's own reason if it fails. A rejected login
-/// (401) signs out. True when the call went through.
+/// (401) is left to Session.expire(), which is already signing out with its notice.
+/// True when the call went through.
 Future<bool> guard(BuildContext c, Future<void> Function() call, {String? done}) async {
-  final scope = AppScope.of(c);
   try {
     await call();
     if (done != null && c.mounted) snack(c, done);
     return true;
   } on ApiException catch (e) {
-    if (e.status == 401) {
-      scope.onSignOut();
-    } else if (c.mounted) {
-      snack(c, e.message);
-    }
+    if (e.status != 401 && c.mounted) snack(c, e.message);
     return false;
   }
 }

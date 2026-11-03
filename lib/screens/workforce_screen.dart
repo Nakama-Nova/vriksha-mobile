@@ -20,7 +20,7 @@ class _WorkforceScreenState extends State<WorkforceScreen> {
   Widget build(BuildContext context) {
     final s = AppScope.of(context).session;
     return Screen(
-      title: 'Workforce',
+      title: 'Attendance',
       subtitle: s.canSell ? null : 'Your attendance history',
       body: Loader<(List, List)>(
         key: ValueKey(_gen),

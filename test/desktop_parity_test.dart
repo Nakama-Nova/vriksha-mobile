@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vriksha_capture/kit.dart';
 import 'package:vriksha_capture/config.dart';
 import 'package:vriksha_capture/modules.dart';
+import 'package:vriksha_capture/screens/budgets_screen.dart';
 import 'package:vriksha_capture/screens/home_shell.dart';
 import 'package:vriksha_capture/session.dart';
 import 'package:vriksha_capture/theme.dart';
@@ -20,6 +21,45 @@ void main() {
     expect(seen('achari'), {'home', 'stock', 'workforce', 'lab', 'wages'});
     expect(seen('worker'), {'home', 'stock', 'workforce', 'lab', 'wages'});
     expect(as_('worker').canSell, isFalse);
+  });
+
+  test('the side panel has the desktop\'s order, headings and names', () {
+    final bySection = <String?, List<String>>{};
+    for (final m in modules) {
+      (bySection[m.section] ??= []).add(m.label);
+    }
+    expect(bySection[null], ['Home']);
+    expect(bySection['Selling'], ['New Bill', 'Bill History', 'Buyers']);
+    expect(bySection['Stock and buying'], ['Stock', 'Materials', 'Purchases']);
+    expect(bySection['Workshop'], ['3D Lab']);
+    expect(bySection['People and pay'], ['Attendance', 'Wages', 'Staff']);
+    expect(bySection['Money'], ['Expenses', 'Profit', 'Budgets', 'Reports']);
+  });
+
+  test('budgets: owner and manager look, nobody else; the rest of the desktop rules', () {
+    expect(as_('owner').allows('budgets'), isTrue);
+    expect(as_('manager').allows('budgets'), isTrue);
+    for (final r in ['sales', 'achari', 'artisan', 'worker']) {
+      expect(as_(r).allows('budgets'), isFalse, reason: r);
+    }
+    expect(as_('manager').allows('restoration'), isFalse);
+    expect(as_('manager').allows('designs'), isFalse);
+    expect(as_('artisan').allows('restoration'), isTrue);
+    expect(as_('artisan').allows('designs'), isTrue);
+    expect(as_('achari').allows('machines'), isTrue);
+    expect(as_('worker').allows('machines'), isFalse);
+    expect(as_('sales').allows('machines'), isFalse);
+  });
+
+  test('budget usage follows the desktop: amber from 80%, red when used up', () {
+    expect(usageText(0, 500), (0.0, 'no_budget', 'No budget set'));
+    expect(usageText(1000, 500), (50.0, 'ok', '50% used · ₹500.00 left'));
+    expect(usageText(1000, 800).$2, 'warning');
+    expect(usageText(1000, 1000).$2, 'over');
+    expect(usageText(1000, 1200), (120.0, 'over', '120% used · ₹200.00 over'));
+    expect(periodLabel('month', '2026-03-01'), 'March 2026');
+    expect(periodLabel('financial_year', '2026-04-01'), 'Year 2026–27');
+    expect(periodLabel('month', null), '');
   });
 
   test('money and dates read like the desktop', () {
@@ -94,7 +134,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
     expect(find.text('Staff desk · u'), findsOneWidget);
-    for (final label in ['Home', 'New Bill', 'Stock', 'Buyers', 'Bill History', 'Workforce']) {
+    for (final label in ['Home', 'New Bill', 'Stock', 'Buyers', 'Bill History', 'Attendance']) {
       expect(find.textContaining(label), findsWidgets, reason: label);
     }
     expect(find.textContaining('Profit'), findsNothing); // hidden from sales, as on the desktop
