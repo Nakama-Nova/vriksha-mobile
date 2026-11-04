@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <!-- Android 13+: asked once, so shop news can show as notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- check-in and check-out send the phone's position (asked when the button is first used) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="Vriksha Capture"
         android:usesCleartextTraffic="true"

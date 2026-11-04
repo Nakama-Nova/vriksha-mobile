@@ -43,6 +43,7 @@ dependencies:
   package_info_plus: ^10.2.2
   url_launcher: ^6.3.3
   printing: ^5.14.2   # share or print a letter's PDF
+  geolocator: ^14.0.2   # the phone's GPS position for check-in and check-out
 
 dev_dependencies:
   flutter_test:
