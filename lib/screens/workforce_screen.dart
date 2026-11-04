@@ -89,6 +89,7 @@ class _WorkforceScreenState extends State<WorkforceScreen> {
     setState(() => _busy = true);
     try {
       final fix = await (widget.position ?? currentFix)();
+      if (!mounted) return;
       Map? r;
       final ok = await guard(
           context, () async => r = await api.postJson('/attendance/me/${checkIn ? 'check-in' : 'check-out'}', fix.toJson()) as Map);
