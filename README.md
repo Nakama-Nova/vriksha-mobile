@@ -33,7 +33,7 @@ flutter test
 flutter build apk --release
 ```
 
-The app talks to `https://vriksha-beta-api.vercel.app` unless you build for another server: `flutter build apk --dart-define=API_BASE_URL=https://your-server` (the same flag works with `flutter run`).
+The app talks to `https://api.vrikshastudios.com` unless you build for another server: `flutter build apk --dart-define=API_BASE_URL=https://your-server` (the same flag works with `flutter run`).
 
 CI (`.github/workflows/ci.yml`) runs analyze and tests and attaches an installable APK to every run. That APK is debug-signed, and the manifest allows plain `http://` so the app can reach a shop server on the local network; use `https://` for anything on the internet.
 
